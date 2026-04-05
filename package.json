@@ -1,0 +1,31 @@
+{
+  "name": "ai-site-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered static site generator — rebuild, clone, or create from scratch",
+  "scripts": {
+    "dev": "tsx watch src/cli.ts",
+    "build": "tsc",
+    "generate": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "dashboard": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@types/express": "^5.0.6",
+    "chalk": "^5.4.1",
+    "cheerio": "^1.1.2",
+    "commander": "^13.1.0",
+    "express": "^5.2.1",
+    "mime-types": "^3.0.1",
+    "openai": "^6.33.0",
+    "ora": "^8.2.0",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

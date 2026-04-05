@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Site Generator</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --surface: #f8fafc;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* Header */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 600; }
+    .header .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+
+    /* Main layout */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 1.5rem;
+      min-height: calc(100vh - 60px);
+    }
+
+    @media (max-width: 1024px) {
+      .main { grid-template-columns: 1fr; }
+    }
+
+    /* Panels */
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .panel-body { padding: 1rem; }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .mode-tab:hover { color: var(--text); background: var(--surface); }
+    .mode-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Forms */
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+
+    .field { margin-bottom: 0.75rem; }
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .field label .req { color: var(--error); }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .field textarea { min-height: 60px; resize: vertical; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 0.5rem;
+    }
+    .submit-btn:hover { background: #1e3a8a; }
+    .submit-btn:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    /* Right column */
+    .right-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* Progress log */
+    .log {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.8rem;
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 1rem;
+      min-height: 120px;
+      max-height: 250px;
+      overflow-y: auto;
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+    .log-line { padding: 1px 0; }
+    .log-line.success { color: var(--success); }
+    .log-line.error { color: var(--error); }
+
+    /* Token table */
+    .token-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .token-table th {
+      text-align: left;
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .token-table td {
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .token-table td:nth-child(2),
+    .token-table td:nth-child(3),
+    .token-table td:nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+    .token-table .total-row { font-weight: 600; border-top: 2px solid var(--border); }
+    .cost-badge {
+      display: inline-block;
+      background: var(--success);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Preview */
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .preview-bar a, .preview-bar button {
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+    }
+    .preview-bar a:hover, .preview-bar button:hover {
+      background: var(--surface);
+      border-color: var(--primary-light);
+    }
+    .preview-bar .active-page {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .preview-frame {
+      width: 100%;
+      min-height: 500px;
+      height: 70vh;
+      border: none;
+    }
+
+    /* Past jobs */
+    .job-list { list-style: none; }
+    .job-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.8rem;
+    }
+    .job-list li:last-child { border-bottom: none; }
+    .job-link {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .job-date { color: var(--text-muted); font-size: 0.75rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>AI Site Generator</h1>
+    <span class="badge">GPT-4.1-mini</span>
+  </div>
+
+  <div class="main">
+    <!-- Left Column: Controls -->
+    <div class="left-col">
+      <div class="panel">
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="generate">Generate</button>
+          <button class="mode-tab" data-mode="rebuild">Rebuild</button>
+          <button class="mode-tab" data-mode="clone">Clone</button>
+        </div>
+        <div class="panel-body">
+          <!-- Generate Form -->
+          <div class="form-section active" id="form-generate">
+            <div class="field">
+              <label>Business Name <span class="req">*</span></label>
+              <input type="text" name="name" placeholder="Cape Plumbing Co">
+            </div>
+            <div class="field">
+              <label>Description <span class="req">*</span></label>
+              <textarea name="description" placeholder="Professional plumbing services in Cape Town"></textarea>
+            </div>
+            <div class="field">
+              <label>Brief <span class="req">*</span></label>
+              <textarea name="brief" placeholder="A 5-page site for a Cape Town plumber with home, about, services, gallery, and contact pages"></textarea>
+            </div>
+            <div class="field">
+              <label>Industry</label>
+              <input type="text" name="industry" placeholder="plumbing">
+            </div>
+            <div class="field">
+              <label>Style</label>
+              <select name="style">
+                <option value="modern" selected>Modern</option>
+                <option value="classic">Classic</option>
+                <option value="minimal">Minimal</option>
+                <option value="bold">Bold</option>
+                <option value="playful">Playful</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Phone</label>
+              <input type="tel" name="phone" placeholder="+27 21 555 0123">
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" placeholder="info@example.com">
+            </div>
+            <div class="field">
+              <label>Address</label>
+              <input type="text" name="address" placeholder="123 Main Road, Cape Town">
+            </div>
+          </div>
+
+          <!-- Rebuild Form -->
+          <div class="form-section" id="form-rebuild">
+            <div class="field">
+              <label>Site URL <span class="req">*</span></label>
+              <input type="url" name="url" placeholder="https://example.com">
+            </div>
+            <div class="field">
+              <label>Max Pages</label>
+              <input type="number" name="maxPages" value="20" min="1" max="50">
+            </div>
+            <div class="field">
+              <label>Auditor API Key</label>
+              <input type="text" name="auditorKey" placeholder="rfk_...">
+            </div>
+          </div>
+
+          <!-- Clone Form -->
+          <div class="form-section" id="form-clone">
+            <div class="field">
+              <label>Inspiration URL <span class="req">*</span></label>
+              <input type="url" name="inspirationUrl" placeholder="https://nice-site.com">
+            </div>
+            <div class="field">
+              <label>Business Name <span class="req">*</span></label>
+              <input type="text" name="name" placeholder="My Business">
+            </div>
+            <div class="field">
+              <label>Description <span class="req">*</span></label>
+              <textarea name="description" placeholder="We provide quality services..."></textarea>
+            </div>
+            <div class="field">
+              <label>Industry</label>
+              <input type="text" name="industry" placeholder="plumbing">
+            </div>
+            <div class="field">
+              <label>Phone</label>
+              <input type="tel" name="phone" placeholder="+27 21 555 0123">
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" placeholder="info@example.com">
+            </div>
+            <div class="field">
+              <label>Address</label>
+              <input type="text" name="address" placeholder="123 Main Road, Cape Town">
+            </div>
+          </div>
+
+          <button class="submit-btn" id="submit-btn">Generate Site</button>
+        </div>
+      </div>
+
+      <!-- Past Jobs -->
+      <div class="panel">
+        <div class="panel-header">Past Generations</div>
+        <div class="panel-body" style="padding: 0.5rem 1rem;">
+          <ul class="job-list" id="job-list">
+            <li class="empty-state">No generations yet</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Output -->
+    <div class="right-col">
+      <!-- Progress -->
+      <div class="panel">
+        <div class="panel-header">Progress</div>
+        <div class="log" id="log">
+          <div class="log-line" style="color: #475569;">Waiting for generation...</div>
+        </div>
+      </div>
+
+      <!-- Tokens -->
+      <div class="panel" id="tokens-panel">
+        <div class="panel-header">Token Usage</div>
+        <div class="panel-body">
+          <table class="token-table">
+            <thead>
+              <tr><th>Call</th><th>Input</th><th>Output</th><th>Total</th></tr>
+            </thead>
+            <tbody id="token-body">
+              <tr><td colspan="4" class="empty-state">No data yet</td></tr>
+            </tbody>
+          </table>
+          <div id="cost-display" class="hidden"></div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="panel" id="preview-panel" class="hidden">
+        <div class="panel-header">Preview</div>
+        <div class="preview-bar" id="preview-bar">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Generate a site to preview</span>
+        </div>
+        <iframe class="preview-frame" id="preview-frame" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    let currentMode = 'generate';
+    let tokenRows = [];
+
+    // Mode tabs
+    $$('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        currentMode = tab.dataset.mode;
+        $$('.mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        $$('.form-section').forEach(f => f.classList.remove('active'));
+        $(`#form-${currentMode}`).classList.add('active');
+        // Update button text
+        const labels = { generate: 'Generate Site', rebuild: 'Rebuild Site', clone: 'Clone Site' };
+        $('#submit-btn').textContent = labels[currentMode];
+      });
+    });
+
+    // Collect form data from active form
+    function getFormData() {
+      const form = $(`#form-${currentMode}`);
+      const data = { mode: currentMode };
+      form.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.value.trim()) {
+          data[el.name] = el.type === 'number' ? parseInt(el.value) : el.value.trim();
+        }
+      });
+      return data;
+    }
+
+    // Log helpers
+    function clearLog() {
+      $('#log').innerHTML = '';
+    }
+    function addLog(msg, cls = '') {
+      const line = document.createElement('div');
+      line.className = 'log-line' + (cls ? ' ' + cls : '');
+      line.textContent = msg;
+      $('#log').appendChild(line);
+      $('#log').scrollTop = $('#log').scrollHeight;
+    }
+
+    // Token table
+    function clearTokens() {
+      tokenRows = [];
+      $('#token-body').innerHTML = '<tr><td colspan="4" class="empty-state">Waiting...</td></tr>';
+      $('#cost-display').classList.add('hidden');
+    }
+    function addTokenRow(label, input, output) {
+      tokenRows.push({ label, input, output });
+      renderTokenTable();
+    }
+    function renderTokenTable() {
+      const body = $('#token-body');
+      body.innerHTML = tokenRows.map(r => `
+        <tr>
+          <td>${r.label}</td>
+          <td>${r.input.toLocaleString()}</td>
+          <td>${r.output.toLocaleString()}</td>
+          <td>${(r.input + r.output).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+    function showTotals(tokens) {
+      const body = $('#token-body');
+      body.innerHTML += `
+        <tr class="total-row">
+          <td>Total</td>
+          <td>${tokens.totalInput.toLocaleString()}</td>
+          <td>${tokens.totalOutput.toLocaleString()}</td>
+          <td>${tokens.totalTokens.toLocaleString()}</td>
+        </tr>
+      `;
+      const costEl = $('#cost-display');
+      costEl.innerHTML = `<span class="cost-badge">Estimated cost: $${tokens.estimatedCost.toFixed(4)}</span>`;
+      costEl.classList.remove('hidden');
+    }
+
+    // Preview
+    function showPreview(jobId) {
+      const previewUrl = `/preview/${jobId}/`;
+      const bar = $('#preview-bar');
+      const frame = $('#preview-frame');
+
+      frame.src = previewUrl;
+
+      // Build page buttons (we'll discover pages from the job)
+      bar.innerHTML = `
+        <button class="active-page" onclick="setPreviewPage('${jobId}', '')">Home</button>
+        <a href="${previewUrl}" target="_blank">Open in New Tab</a>
+      `;
+
+      // Try to discover subpages by fetching the directory listing
+      // For now just show Home + open button. Pages are discovered from the generation.
+    }
+
+    function setPreviewPage(jobId, slug) {
+      const url = `/preview/${jobId}/${slug}`;
+      $('#preview-frame').src = url;
+    }
+
+    // Load past jobs
+    async function loadJobs() {
+      try {
+        const res = await fetch('/api/jobs');
+        const jobs = await res.json();
+        const list = $('#job-list');
+        if (jobs.length === 0) {
+          list.innerHTML = '<li class="empty-state">No generations yet</li>';
+          return;
+        }
+        list.innerHTML = jobs.slice(0, 15).map(j => `
+          <li>
+            <a class="job-link" onclick="showPreview('${j.id}')">${j.id}</a>
+            <span class="job-date">${new Date(j.created).toLocaleDateString()}</span>
+          </li>
+        `).join('');
+      } catch (e) { /* ignore */ }
+    }
+
+    // Submit
+    $('#submit-btn').addEventListener('click', async () => {
+      const data = getFormData();
+      const btn = $('#submit-btn');
+
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      clearLog();
+      clearTokens();
+      addLog('Starting generation...', '');
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          addLog('Error: ' + err.error, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Generate Site';
+          return;
+        }
+
+        // Read SSE stream
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep incomplete line
+
+          let eventType = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7);
+            } else if (line.startsWith('data: ') && eventType) {
+              try {
+                const eventData = JSON.parse(line.slice(6));
+                handleEvent(eventType, eventData);
+              } catch (e) { /* skip malformed */ }
+              eventType = '';
+            }
+          }
+        }
+      } catch (e) {
+        addLog('Connection error: ' + e.message, 'error');
+      }
+
+      btn.disabled = false;
+      const labels = { generate: 'Generate Site', rebuild: 'Rebuild Site', clone: 'Clone Site' };
+      btn.textContent = labels[currentMode];
+      loadJobs();
+    });
+
+    function handleEvent(type, data) {
+      switch (type) {
+        case 'progress':
+          const msg = data.message || '';
+          const isSuccess = msg.includes('Done!') || msg.includes('Wrote');
+          addLog(msg, isSuccess ? 'success' : '');
+          break;
+
+        case 'token':
+          addTokenRow(data.label, data.inputTokens, data.outputTokens);
+          break;
+
+        case 'complete':
+          addLog('Generation complete!', 'success');
+          showTotals(data.tokens);
+          showPreview(data.jobId);
+          // Try to build page buttons from token calls
+          buildPageButtons(data.jobId, data.tokens.calls || []);
+          break;
+
+        case 'error':
+          addLog('Error: ' + data.message, 'error');
+          break;
+      }
+    }
+
+    function buildPageButtons(jobId, calls) {
+      const pages = calls
+        .filter(c => c.label.startsWith('Page: '))
+        .map(c => c.label.replace('Page: ', ''));
+
+      const bar = $('#preview-bar');
+      bar.innerHTML = pages.map((slug, i) => {
+        const label = slug === '/' ? 'Home' : slug.replace(/^\//, '').replace(/\//g, ' / ');
+        const path = slug === '/' ? '' : slug.replace(/^\//, '') + '/';
+        const active = i === 0 ? ' active-page' : '';
+        return `<button class="${active}" onclick="navTo(this, '${jobId}', '${path}')">${label}</button>`;
+      }).join('') + `<a href="/preview/${jobId}/" target="_blank">Open in New Tab</a>`;
+    }
+
+    function navTo(btn, jobId, path) {
+      $$('.preview-bar button').forEach(b => b.classList.remove('active-page'));
+      btn.classList.add('active-page');
+      $('#preview-frame').src = `/preview/${jobId}/${path}`;
+    }
+
+    // Initial load
+    loadJobs();
+  </script>
+</body>
+</html>
