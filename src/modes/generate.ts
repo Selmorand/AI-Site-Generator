@@ -14,7 +14,11 @@ import type {
 } from '../types/blueprint.js'
 import { tokenTracker } from '../token-tracker.js'
 
-const client = new OpenAI()
+let _client: OpenAI | null = null
+function getClient(): OpenAI {
+  if (!_client) _client = new OpenAI()
+  return _client
+}
 
 export async function generate(input: GenerateInput, outputDir: string) {
   console.log(`\n[Generate] Creating site from scratch for: ${input.clientContent.businessName}`)
@@ -67,7 +71,7 @@ async function planSiteStructure(
 ): Promise<{ pages: PageBlueprint[]; navigation: NavItem[] }> {
   const { clientContent, brief } = input
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: 'gpt-4.1-mini',
     max_tokens: 8000,
     messages: [
@@ -143,7 +147,7 @@ Rules:
 async function generateDesignTokens(input: GenerateInput): Promise<DesignTokens> {
   const { clientContent, stylePreference } = input
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: 'gpt-4.1-mini',
     max_tokens: 2000,
     messages: [

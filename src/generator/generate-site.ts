@@ -10,16 +10,17 @@
 import OpenAI from 'openai'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { fileURLToPath } from 'url'
 import type { SiteBlueprint, PageBlueprint } from '../types/blueprint.js'
 import { tokenTracker } from '../token-tracker.js'
 
-const client = new OpenAI() // reads OPENAI_API_KEY from env
+let _client: OpenAI | null = null
+function getClient(): OpenAI {
+  if (!_client) _client = new OpenAI()
+  return _client
+}
 
 /** Path to the static base stylesheet shipped with the tool */
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const BASE_CSS_PATH = path.resolve(__dirname, '..', 'assets', 'base.css')
+const BASE_CSS_PATH = path.resolve(process.cwd(), 'src', 'assets', 'base.css')
 
 export interface GeneratedSite {
   pages: { path: string; html: string }[]
@@ -236,7 +237,7 @@ async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint): Prom
 
   const schemaSpecs = buildSchemaForPage(blueprint, page)
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: 'gpt-4.1-mini',
     max_tokens: 16000,
     messages: [
