@@ -2,6 +2,7 @@
  * Express server for the AI Site Generator dashboard.
  */
 
+import 'dotenv/config'
 import express from 'express'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
