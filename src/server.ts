@@ -36,7 +36,7 @@ app.use('/preview/:jobId', (req, res, next) => {
   express.static(jobDir)(req, res, next)
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  AI Site Generator Dashboard`)
   console.log(`  http://localhost:${PORT}\n`)
 })
