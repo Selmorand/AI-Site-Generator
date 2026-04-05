@@ -4,8 +4,7 @@ const path = require('path');
 const svc = new Service({
   name: 'AI Site Generator',
   description: 'AI Site Generator Dashboard - webgen.interon.co.za',
-  script: path.join(__dirname, 'src', 'server.ts'),
-  nodeOptions: ['--import', 'tsx/esm'],
+  script: path.join(__dirname, 'dist', 'server.js'),
   env: [{
     name: 'NODE_ENV',
     value: 'production'

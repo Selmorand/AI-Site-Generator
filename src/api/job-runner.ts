@@ -9,7 +9,7 @@ import { generate } from '../modes/generate.js'
 import { rebuild } from '../modes/rebuild.js'
 import { clone } from '../modes/clone.js'
 import { tokenTracker } from '../token-tracker.js'
-import type { GenerateInput, CloneInput, RebuildInput } from '../types/blueprint.js'
+import type { GenerateInput, CloneInput, RebuildInput, DesignTokens } from '../types/blueprint.js'
 
 export interface JobEvent {
   type: 'progress' | 'token' | 'complete' | 'error'
@@ -75,7 +75,7 @@ export async function runJob(
           contactEmail: params.email as string | undefined,
           address: params.address as string | undefined,
         },
-        stylePreference: params.style as string | undefined,
+        stylePreference: params.style as DesignTokens['style'] | undefined,
       }
       await generate(input, outputDir)
     } else if (mode === 'rebuild') {

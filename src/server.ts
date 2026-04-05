@@ -5,11 +5,9 @@
 import 'dotenv/config'
 import express from 'express'
 import * as path from 'path'
-import { fileURLToPath } from 'url'
 import apiRoutes from './api/routes.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const srcDir = path.resolve(process.cwd(), 'src')
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '3500', 10)
@@ -19,7 +17,7 @@ app.use(express.json())
 
 // Serve dashboard
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'))
+  res.sendFile(path.join(srcDir, 'dashboard', 'index.html'))
 })
 
 // API routes

@@ -7,8 +7,9 @@
     "dev": "tsx watch src/cli.ts",
     "build": "tsc",
     "generate": "tsx src/cli.ts",
-    "start": "node dist/cli.js",
-    "dashboard": "tsx src/server.ts"
+    "start": "node dist/server.js",
+    "dashboard": "tsx src/server.ts",
+    "deploy": "tsc && node service-install.js"
   },
   "dependencies": {
     "@types/express": "^5.0.6",
