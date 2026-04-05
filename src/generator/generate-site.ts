@@ -21,16 +21,22 @@ function getClient(): OpenAI {
 
 /** Path to the static base stylesheet shipped with the tool.
  *  Tries multiple locations to work in both dev (tsx) and production (compiled JS) modes. */
+import { accessSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+const __esm_filename = fileURLToPath(import.meta.url)
+const __esm_dirname = path.dirname(__esm_filename)
+
 function getBaseCssPath(): string {
   const candidates = [
     path.resolve(process.cwd(), 'src', 'assets', 'base.css'),
-    path.resolve(__dirname, '..', 'assets', 'base.css'),        // compiled: dist/generator/ -> src/assets/
-    path.resolve(__dirname, '..', '..', 'src', 'assets', 'base.css'), // compiled: dist/generator/ -> project root
+    path.resolve(__esm_dirname, '..', 'assets', 'base.css'),
+    path.resolve(__esm_dirname, '..', '..', 'src', 'assets', 'base.css'),
   ]
   for (const p of candidates) {
-    try { require('fs').accessSync(p); return p } catch {}
+    try { accessSync(p); return p } catch {}
   }
-  return candidates[0] // fallback, will error with clear message
+  return candidates[0]
 }
 
 export interface GeneratedSite {
