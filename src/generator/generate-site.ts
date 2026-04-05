@@ -19,8 +19,19 @@ function getClient(): OpenAI {
   return _client
 }
 
-/** Path to the static base stylesheet shipped with the tool */
-const BASE_CSS_PATH = path.resolve(process.cwd(), 'src', 'assets', 'base.css')
+/** Path to the static base stylesheet shipped with the tool.
+ *  Tries multiple locations to work in both dev (tsx) and production (compiled JS) modes. */
+function getBaseCssPath(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'src', 'assets', 'base.css'),
+    path.resolve(__dirname, '..', 'assets', 'base.css'),        // compiled: dist/generator/ -> src/assets/
+    path.resolve(__dirname, '..', '..', 'src', 'assets', 'base.css'), // compiled: dist/generator/ -> project root
+  ]
+  for (const p of candidates) {
+    try { require('fs').accessSync(p); return p } catch {}
+  }
+  return candidates[0] // fallback, will error with clear message
+}
 
 export interface GeneratedSite {
   pages: { path: string; html: string }[]
@@ -36,7 +47,7 @@ export async function generateSite(blueprint: SiteBlueprint, outputDir: string):
 
   // Step 1: Copy base.css and generate theme.css
   console.log('  Copying base stylesheet...')
-  const baseCss = await fs.readFile(BASE_CSS_PATH, 'utf-8')
+  const baseCss = await fs.readFile(getBaseCssPath(), 'utf-8')
   const themeCss = generateThemeCss(blueprint)
 
   // Step 2: Generate each page
@@ -432,6 +443,9 @@ async function writeSite(
   baseCss: string,
   themeCss: string
 ): Promise<void> {
+  // Ensure output directory exists
+  await fs.mkdir(outputDir, { recursive: true })
+
   // Write base.css (copied from src/assets/)
   await fs.writeFile(path.join(outputDir, 'base.css'), baseCss, 'utf-8')
 
