@@ -250,7 +250,14 @@ async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint): Prom
     })
     .join('\n')
 
-  const navDesc = navigation.map((n) => `${n.label} → ${n.href}`).join(', ')
+  // Build relative navigation links for this page's depth
+  const rootPrefix = depth === 0 ? './' : '../'.repeat(depth)
+  const navDesc = navigation.map((n) => {
+    const href = n.href === '/'
+      ? rootPrefix
+      : rootPrefix + n.href.replace(/^\//, '') + '/'
+    return `${n.label} → ${href}`
+  }).join(', ')
 
   const schemaSpecs = buildSchemaForPage(blueprint, page)
 
@@ -298,7 +305,7 @@ Requirements:
 - Proper <title>, meta description, viewport, lang="en", charset, OG tags
 - Navigation structure: <nav> > .nav-container > [ .nav-brand (a), input.nav-toggle#nav-toggle, label.nav-toggle-label[for="nav-toggle"] with 3 <span>, ul.nav-links > li > a ]
 - The hamburger label must contain exactly 3 <span> elements (the CSS animates them into an X)
-- Navigation links must use relative paths (e.g. "../services/" not "/services") so the site works from filesystem
+- Navigation links MUST use the EXACT href values from the NAVIGATION list above. Do NOT change them to absolute paths.
 - Current page nav link gets class="active"
 - Footer structure: <footer> > .container > .footer-content (grid) > .footer-section columns; then .footer-bottom for copyright
 - Content must be scannable: short paragraphs, bullet points where appropriate
