@@ -77,7 +77,18 @@ export async function runJob(
         },
         stylePreference: params.style as DesignTokens['style'] | undefined,
       }
-      await generate(input, outputDir)
+      // Build design override if colours/fonts provided
+      const designOverride = params.colors ? {
+        colors: params.colors as DesignTokens['colors'],
+        fonts: (params.fonts as DesignTokens['fonts']) || { heading: 'Inter', body: 'Open Sans' },
+        borderRadius: '8px',
+        style: (params.template as string) || 'modern',
+      } as DesignTokens : undefined
+
+      await generate(input, outputDir, {
+        template: params.template as string | undefined,
+        designOverride,
+      })
     } else if (mode === 'rebuild') {
       const input: RebuildInput = {
         mode: 'rebuild',

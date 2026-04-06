@@ -20,16 +20,27 @@ function getClient(): OpenAI {
   return _client
 }
 
-export async function generate(input: GenerateInput, outputDir: string) {
+export interface GenerateOptions {
+  template?: string
+  designOverride?: DesignTokens
+}
+
+export async function generate(input: GenerateInput, outputDir: string, options: GenerateOptions = {}) {
   console.log(`\n[Generate] Creating site from scratch for: ${input.clientContent.businessName}`)
 
-  // Step 1: Use Claude to plan the site structure from the brief
+  // Step 1: Plan the site structure
   console.log(`[Generate] Planning site structure...`)
   const sitePlan = await planSiteStructure(input)
 
-  // Step 2: Generate design tokens
-  console.log(`[Generate] Generating design...`)
-  const design = await generateDesignTokens(input)
+  // Step 2: Use provided design tokens or generate them
+  let design: DesignTokens
+  if (options.designOverride) {
+    console.log(`[Generate] Using custom design tokens...`)
+    design = options.designOverride
+  } else {
+    console.log(`[Generate] Generating design...`)
+    design = await generateDesignTokens(input)
+  }
 
   // Step 3: Build blueprint
   const blueprint: SiteBlueprint = {
@@ -53,7 +64,8 @@ export async function generate(input: GenerateInput, outputDir: string) {
 
   // Step 4: Generate
   console.log(`[Generate] Generating ${blueprint.pages.length} pages with GPT-4.1-mini...`)
-  const result = await generateSite(blueprint, outputDir)
+  const template = options.template || input.stylePreference || 'modern'
+  const result = await generateSite(blueprint, outputDir, template)
 
   console.log(`[Generate] Done! Generated ${result.pages.length} pages`)
   if (result.errors.length > 0) {

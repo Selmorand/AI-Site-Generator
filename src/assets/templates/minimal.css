@@ -1,0 +1,218 @@
+/*
+ * Template: Minimal
+ * Maximum whitespace, stripped-back visuals, ghost buttons,
+ * narrow container, and almost no decorative effects.
+ */
+
+/* --- Container --- */
+:root {
+  --container-max: 960px;
+}
+
+/* --- Sections --- */
+.section {
+  padding: 6rem 0;
+}
+
+/* --- Navigation --- */
+nav {
+  box-shadow: none;
+  border-bottom: none;
+}
+
+.nav-links {
+  box-shadow: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (min-width: 768px) {
+  .nav-links {
+    border-bottom: none;
+  }
+}
+
+/* --- Hero --- */
+.hero {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.hero::before {
+  display: none;
+}
+
+.hero h1 {
+  color: var(--color-text);
+}
+
+.hero p {
+  color: var(--color-text-muted);
+}
+
+.hero .btn--outline {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.hero .btn--outline:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* --- Buttons — ghost / outline style --- */
+.btn {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn--primary {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.btn--primary:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn--secondary {
+  background-color: transparent;
+  color: var(--color-secondary);
+  border-color: var(--color-secondary);
+}
+
+.btn--secondary:hover {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+}
+
+.btn--accent {
+  background-color: transparent;
+  color: var(--color-accent-dark);
+  border-color: var(--color-accent);
+}
+
+.btn--accent:hover {
+  background-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* --- Cards --- */
+.card {
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.card:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: var(--color-surface);
+}
+
+/* --- Service items --- */
+.service-item {
+  border: none;
+  background-color: transparent;
+  text-align: left;
+}
+
+.service-item:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: var(--color-surface);
+}
+
+/* --- Pricing cards --- */
+.pricing-card {
+  border-color: var(--color-border);
+}
+
+.pricing-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.pricing-card--featured:hover {
+  transform: scale(1.02);
+}
+
+/* --- Testimonials --- */
+.testimonial {
+  background-color: transparent;
+  border-left: none;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  padding-left: 0;
+}
+
+.testimonial::before {
+  left: 0;
+}
+
+/* --- Gallery --- */
+.gallery-grid img {
+  border-radius: var(--radius-sm);
+}
+
+.gallery-grid img:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- Team --- */
+.team-member img {
+  border: 2px solid var(--color-border);
+  box-shadow: none;
+}
+
+/* --- FAQ --- */
+.faq-list details {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.faq-list details:hover {
+  box-shadow: none;
+}
+
+.faq-list details[open] {
+  box-shadow: none;
+}
+
+/* --- CTA --- */
+.cta {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.cta h2 {
+  color: var(--color-text);
+}
+
+.cta p {
+  color: var(--color-text-muted);
+}
+
+.cta .btn--outline {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.cta .btn--outline:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* --- Footer --- */
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}

@@ -261,6 +261,83 @@
       font-size: 0.875rem;
     }
 
+    /* Template picker */
+    .template-picker {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .tpl-btn {
+      flex: 1;
+      min-width: 60px;
+      padding: 0.4rem 0.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      font-size: 0.7rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .tpl-btn:hover { border-color: var(--primary-light); color: var(--text); }
+    .tpl-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* Colour pickers */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+    }
+    @media (max-width: 500px) {
+      .color-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .color-field label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-bottom: 0.15rem;
+    }
+    .color-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .color-input-wrap input[type="color"] {
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0;
+      cursor: pointer;
+      background: none;
+    }
+    .hex-input {
+      width: 65px !important;
+      padding: 0.2rem 0.3rem !important;
+      font-size: 0.7rem !important;
+      font-family: monospace;
+    }
+
+    /* Font inputs */
+    .font-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .font-field label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-bottom: 0.15rem;
+    }
+    .font-field input {
+      font-size: 0.8rem !important;
+      padding: 0.35rem 0.5rem !important;
+    }
+
     .hidden { display: none; }
   </style>
 </head>
@@ -299,14 +376,81 @@
               <input type="text" name="industry" placeholder="plumbing">
             </div>
             <div class="field">
-              <label>Style</label>
-              <select name="style">
-                <option value="modern" selected>Modern</option>
-                <option value="classic">Classic</option>
-                <option value="minimal">Minimal</option>
-                <option value="bold">Bold</option>
-                <option value="playful">Playful</option>
-              </select>
+              <label>Template</label>
+              <div class="template-picker" id="template-picker">
+                <button type="button" class="tpl-btn active" data-tpl="modern" title="Clean sans-serif, blue tones, card grids">Modern</button>
+                <button type="button" class="tpl-btn" data-tpl="classic" title="Centred layout, serif feel, traditional structure">Classic</button>
+                <button type="button" class="tpl-btn" data-tpl="minimal" title="Lots of whitespace, single column, ghost buttons">Minimal</button>
+                <button type="button" class="tpl-btn" data-tpl="bold" title="Dark nav, large type, strong contrasts">Bold</button>
+                <button type="button" class="tpl-btn" data-tpl="playful" title="Rounded corners, wave dividers, fun hover effects">Playful</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Colours</label>
+              <div class="color-grid">
+                <div class="color-field">
+                  <label>Primary</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-primary" value="#1e40af">
+                    <input type="text" name="color-primary-hex" value="#1e40af" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Secondary</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-secondary" value="#0891b2">
+                    <input type="text" name="color-secondary-hex" value="#0891b2" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Accent</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-accent" value="#f59e0b">
+                    <input type="text" name="color-accent-hex" value="#f59e0b" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Background</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-background" value="#ffffff">
+                    <input type="text" name="color-background-hex" value="#ffffff" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Surface</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-surface" value="#f8fafc">
+                    <input type="text" name="color-surface-hex" value="#f8fafc" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Text</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-text" value="#1e293b">
+                    <input type="text" name="color-text-hex" value="#1e293b" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+                <div class="color-field">
+                  <label>Text Muted</label>
+                  <div class="color-input-wrap">
+                    <input type="color" name="color-textMuted" value="#64748b">
+                    <input type="text" name="color-textMuted-hex" value="#64748b" maxlength="7" class="hex-input">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Fonts</label>
+              <div class="font-grid">
+                <div class="font-field">
+                  <label>Heading</label>
+                  <input type="text" name="font-heading" value="Inter" placeholder="Google Font name">
+                </div>
+                <div class="font-field">
+                  <label>Body</label>
+                  <input type="text" name="font-body" value="Open Sans" placeholder="Google Font name">
+                </div>
+              </div>
             </div>
             <div class="field">
               <label>Phone</label>
@@ -427,6 +571,7 @@
     const $$ = (sel) => document.querySelectorAll(sel);
 
     let currentMode = 'generate';
+    let currentTemplate = 'modern';
     let tokenRows = [];
 
     // Mode tabs
@@ -437,9 +582,27 @@
         tab.classList.add('active');
         $$('.form-section').forEach(f => f.classList.remove('active'));
         $(`#form-${currentMode}`).classList.add('active');
-        // Update button text
         const labels = { generate: 'Generate Site', rebuild: 'Rebuild Site', clone: 'Clone Site' };
         $('#submit-btn').textContent = labels[currentMode];
+      });
+    });
+
+    // Template picker
+    $$('.tpl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentTemplate = btn.dataset.tpl;
+        $$('.tpl-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Sync colour pickers with hex inputs
+    document.querySelectorAll('.color-input-wrap').forEach(wrap => {
+      const picker = wrap.querySelector('input[type="color"]');
+      const hex = wrap.querySelector('.hex-input');
+      picker.addEventListener('input', () => { hex.value = picker.value; });
+      hex.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value;
       });
     });
 
@@ -447,11 +610,29 @@
     function getFormData() {
       const form = $(`#form-${currentMode}`);
       const data = { mode: currentMode };
-      form.querySelectorAll('input, textarea, select').forEach(el => {
-        if (el.value.trim()) {
+      form.querySelectorAll('input:not([type="color"]):not(.hex-input):not([name^="font-"]), textarea, select').forEach(el => {
+        if (el.value.trim() && !el.name.startsWith('color-')) {
           data[el.name] = el.type === 'number' ? parseInt(el.value) : el.value.trim();
         }
       });
+
+      // Add template and design data for generate mode
+      if (currentMode === 'generate') {
+        data.template = currentTemplate;
+        data.colors = {
+          primary: $('[name="color-primary-hex"]').value,
+          secondary: $('[name="color-secondary-hex"]').value,
+          accent: $('[name="color-accent-hex"]').value,
+          background: $('[name="color-background-hex"]').value,
+          surface: $('[name="color-surface-hex"]').value,
+          text: $('[name="color-text-hex"]').value,
+          textMuted: $('[name="color-textMuted-hex"]').value,
+        };
+        data.fonts = {
+          heading: $('[name="font-heading"]').value || 'Inter',
+          body: $('[name="font-body"]').value || 'Open Sans',
+        };
+      }
       return data;
     }
 

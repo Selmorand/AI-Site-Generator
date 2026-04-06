@@ -2,9 +2,10 @@
  * Site Generator — takes a SiteBlueprint and uses OpenAI (gpt-4.1-mini) to generate
  * a complete, deployable static site with AI readiness baked in.
  *
- * CSS is split into two files:
- *  - base.css  — static foundation (copied from src/assets/base.css)
- *  - theme.css — generated :root custom properties for colors/fonts
+ * CSS is split into three files:
+ *  - base.css     — static foundation (copied from src/assets/base.css)
+ *  - theme.css    — generated :root custom properties for colors/fonts
+ *  - template.css — template-specific overrides (copied from src/assets/templates/{template}.css)
  */
 
 import OpenAI from 'openai'
@@ -39,6 +40,18 @@ function getBaseCssPath(): string {
   return candidates[0]
 }
 
+function getTemplateCssPath(template: string): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'src', 'assets', 'templates', `${template}.css`),
+    path.resolve(__esm_dirname, '..', 'assets', 'templates', `${template}.css`),
+    path.resolve(__esm_dirname, '..', '..', 'src', 'assets', 'templates', `${template}.css`),
+  ]
+  for (const p of candidates) {
+    try { accessSync(p); return p } catch {}
+  }
+  return candidates[0]
+}
+
 export interface GeneratedSite {
   pages: { path: string; html: string }[]
   css: string
@@ -48,13 +61,15 @@ export interface GeneratedSite {
 /**
  * Generate the full static site from a blueprint.
  */
-export async function generateSite(blueprint: SiteBlueprint, outputDir: string): Promise<GeneratedSite> {
+export async function generateSite(blueprint: SiteBlueprint, outputDir: string, template: string = 'modern'): Promise<GeneratedSite> {
   const errors: string[] = []
 
-  // Step 1: Copy base.css and generate theme.css
+  // Step 1: Copy base.css, generate theme.css, and copy template.css
   console.log('  Copying base stylesheet...')
   const baseCss = await fs.readFile(getBaseCssPath(), 'utf-8')
   const themeCss = generateThemeCss(blueprint)
+  console.log(`  Copying template stylesheet (${template})...`)
+  const templateCss = await fs.readFile(getTemplateCssPath(template), 'utf-8')
 
   // Step 2: Generate each page
   const pages: { path: string; html: string }[] = []
@@ -62,7 +77,7 @@ export async function generateSite(blueprint: SiteBlueprint, outputDir: string):
   for (const page of blueprint.pages) {
     console.log(`  Generating page: ${page.slug}`)
     try {
-      const html = await generatePage(blueprint, page)
+      const html = await generatePage(blueprint, page, template)
       const filePath = page.slug === '/' ? 'index.html' : `${page.slug.replace(/^\//, '')}/index.html`
       pages.push({ path: filePath, html })
     } catch (err) {
@@ -71,7 +86,7 @@ export async function generateSite(blueprint: SiteBlueprint, outputDir: string):
   }
 
   // Step 3: Write files
-  await writeSite(outputDir, pages, baseCss, themeCss)
+  await writeSite(outputDir, pages, baseCss, themeCss, templateCss)
 
   return { pages, css: themeCss, errors }
 }
@@ -231,13 +246,14 @@ UTILITIES:
 `.trim()
 
 /** Generate a single page's HTML */
-async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint): Promise<string> {
+async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint, template: string = 'modern'): Promise<string> {
   const { meta, navigation } = blueprint
 
   // Calculate relative path to root for CSS/asset linking
   const depth = page.slug === '/' ? 0 : page.slug.replace(/^\//, '').split('/').length
   const baseCssPath = depth === 0 ? './base.css' : '../'.repeat(depth) + 'base.css'
   const themeCssPath = depth === 0 ? './theme.css' : '../'.repeat(depth) + 'theme.css'
+  const templateCssPath = depth === 0 ? './template.css' : '../'.repeat(depth) + 'template.css'
 
   const sectionsDesc = (page.sections ?? [])
     .map((s, i) => {
@@ -296,7 +312,7 @@ ${JSON.stringify(schemaSpecs, null, 2)}
 
 Requirements:
 - Complete HTML5 document with <!DOCTYPE html>
-- Link to BOTH "${baseCssPath}" AND "${themeCssPath}" (external stylesheets — use these EXACT paths). Put theme.css AFTER base.css so it overrides custom properties.
+- Link to ALL THREE stylesheets: "${baseCssPath}", "${themeCssPath}", and "${templateCssPath}" (external stylesheets — use these EXACT paths). Order: base.css first, then theme.css, then template.css so each layer can override the previous.
 - Use ONLY the CSS classes listed above. Do NOT invent new class names or write inline styles or <style> blocks.
 - Semantic HTML: <header> is NOT used — the nav is a top-level <nav> element. Use <main>, <section>, <footer>.
 - Exactly ONE <h1> tag per page
@@ -454,7 +470,8 @@ async function writeSite(
   outputDir: string,
   pages: { path: string; html: string }[],
   baseCss: string,
-  themeCss: string
+  themeCss: string,
+  templateCss: string
 ): Promise<void> {
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true })
@@ -465,6 +482,9 @@ async function writeSite(
   // Write theme.css (generated from blueprint design tokens)
   await fs.writeFile(path.join(outputDir, 'theme.css'), themeCss, 'utf-8')
 
+  // Write template.css (copied from src/assets/templates/)
+  await fs.writeFile(path.join(outputDir, 'template.css'), templateCss, 'utf-8')
+
   // Write each page
   for (const page of pages) {
     const fullPath = path.join(outputDir, page.path)
@@ -472,5 +492,5 @@ async function writeSite(
     await fs.writeFile(fullPath, page.html, 'utf-8')
   }
 
-  console.log(`  Wrote ${pages.length} pages + base.css + theme.css`)
+  console.log(`  Wrote ${pages.length} pages + base.css + theme.css + template.css`)
 }

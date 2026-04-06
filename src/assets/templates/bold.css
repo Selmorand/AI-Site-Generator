@@ -1,0 +1,192 @@
+/*
+ * Template: Bold
+ * High-impact, strong contrasts, large typography,
+ * thick borders, dark nav, and alternating section backgrounds.
+ */
+
+/* --- Radius overrides --- */
+:root {
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+}
+
+/* --- Navigation — dark background --- */
+nav {
+  background-color: var(--color-dark);
+  border-bottom: none;
+}
+
+.nav-brand {
+  color: var(--color-white);
+}
+
+.nav-brand:hover {
+  color: var(--color-accent);
+}
+
+label.nav-toggle-label span {
+  background-color: var(--color-white);
+}
+
+.nav-links {
+  background-color: var(--color-dark);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-links a {
+  color: var(--color-dark-text);
+}
+
+.nav-links a:hover {
+  color: var(--color-accent);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-links a.active {
+  color: var(--color-accent);
+}
+
+@media (min-width: 768px) {
+  .nav-links {
+    background: none;
+    border: none;
+  }
+
+  .nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .nav-links a.active {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* --- Hero — larger --- */
+.hero {
+  padding: 7rem 0;
+}
+
+.hero h1 {
+  font-size: 3rem;
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding: 8rem 0;
+  }
+
+  .hero h1 {
+    font-size: 4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero h1 {
+    font-size: 5rem;
+  }
+}
+
+/* --- Buttons — larger, bolder --- */
+.btn {
+  padding: 0.75rem 1.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.9rem;
+}
+
+.btn--lg {
+  padding: 1rem 2.5rem;
+  font-size: 1rem;
+}
+
+/* --- Alternating sections --- */
+.section:nth-child(even) {
+  background-color: var(--color-surface);
+}
+
+.section--dark:nth-child(even) {
+  background-color: var(--color-dark);
+}
+
+/* --- Cards — thicker borders, stronger shadows --- */
+.card {
+  border-width: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* --- Service items — colored top border --- */
+.service-item {
+  border-width: 2px;
+  border-top: 4px solid var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.service-item:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* --- Pricing cards --- */
+.pricing-card {
+  border-width: 2px;
+}
+
+.pricing-card--featured {
+  border-width: 3px;
+}
+
+/* --- Stats — much larger numbers --- */
+.stat-number {
+  font-size: 3.5rem;
+}
+
+/* --- CTA — darker gradient --- */
+.cta {
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-dark) 100%);
+}
+
+/* --- Testimonials — filled accent background --- */
+.testimonial {
+  background-color: var(--color-accent);
+  border-left: 4px solid var(--color-accent-dark);
+  color: var(--color-text);
+}
+
+.testimonial::before {
+  color: var(--color-accent-dark);
+  opacity: 0.5;
+}
+
+.testimonial p {
+  color: var(--color-text);
+}
+
+.testimonial cite {
+  color: var(--color-text);
+}
+
+/* --- Gallery --- */
+.gallery-grid img:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* --- FAQ --- */
+.faq-list details {
+  border-width: 2px;
+}
+
+/* --- Footer --- */
+.footer-bottom {
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* --- Team member images --- */
+.team-member img {
+  border-width: 5px;
+  border-color: var(--color-primary);
+}
