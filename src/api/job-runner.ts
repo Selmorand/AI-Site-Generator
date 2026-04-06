@@ -74,6 +74,9 @@ export async function runJob(
           contactPhone: params.phone as string | undefined,
           contactEmail: params.email as string | undefined,
           address: params.address as string | undefined,
+          logoUrl: params.logoUrl as string | undefined,
+          logoReverseUrl: params.logoReverseUrl as string | undefined,
+          faviconUrl: params.faviconUrl as string | undefined,
         },
         stylePreference: params.style as DesignTokens['style'] | undefined,
       }

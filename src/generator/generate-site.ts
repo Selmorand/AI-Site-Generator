@@ -65,19 +65,23 @@ export async function generateSite(blueprint: SiteBlueprint, outputDir: string, 
   const errors: string[] = []
 
   // Step 1: Copy base.css, generate theme.css, and copy template.css
-  console.log('  Copying base stylesheet...')
+  console.log('  Copying stylesheets...')
   const baseCss = await fs.readFile(getBaseCssPath(), 'utf-8')
   const themeCss = generateThemeCss(blueprint)
-  console.log(`  Copying template stylesheet (${template})...`)
   const templateCss = await fs.readFile(getTemplateCssPath(template), 'utf-8')
 
-  // Step 2: Generate each page
+  // Step 2: Generate shared nav + footer (one LLM call)
+  console.log('  Generating shared nav & footer...')
+  const shell = await generateShell(blueprint, template)
+
+  // Step 3: Generate main content for each page
   const pages: { path: string; html: string }[] = []
 
   for (const page of blueprint.pages) {
     console.log(`  Generating page: ${page.slug}`)
     try {
-      const html = await generatePage(blueprint, page, template)
+      const mainContent = await generatePageContent(blueprint, page, template)
+      const html = assembleFullPage(blueprint, page, shell, mainContent, template)
       const filePath = page.slug === '/' ? 'index.html' : `${page.slug.replace(/^\//, '')}/index.html`
       pages.push({ path: filePath, html })
     } catch (err) {
@@ -85,7 +89,7 @@ export async function generateSite(blueprint: SiteBlueprint, outputDir: string, 
     }
   }
 
-  // Step 3: Write files
+  // Step 4: Write files
   await writeSite(outputDir, pages, baseCss, themeCss, templateCss)
 
   return { pages, css: themeCss, errors }
@@ -245,15 +249,83 @@ UTILITIES:
   .mt-sm, .mt-md, .mt-lg, .mt-xl — top margin
 `.trim()
 
-/** Generate a single page's HTML */
-async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint, template: string = 'modern'): Promise<string> {
-  const { meta, navigation } = blueprint
+/** Shared shell — nav + footer HTML generated once and reused on all pages */
+interface SiteShell {
+  navHtml: string
+  footerHtml: string
+}
 
-  // Calculate relative path to root for CSS/asset linking
-  const depth = page.slug === '/' ? 0 : page.slug.replace(/^\//, '').split('/').length
-  const baseCssPath = depth === 0 ? './base.css' : '../'.repeat(depth) + 'base.css'
-  const themeCssPath = depth === 0 ? './theme.css' : '../'.repeat(depth) + 'theme.css'
-  const templateCssPath = depth === 0 ? './template.css' : '../'.repeat(depth) + 'template.css'
+async function generateShell(blueprint: SiteBlueprint, template: string): Promise<SiteShell> {
+  const { meta, navigation } = blueprint
+  const navLinks = navigation.map((n) => `${n.label} → ${n.href}`).join(', ')
+
+  // Determine if nav/footer have dark backgrounds (for reverse logo)
+  const isDarkNav = template === 'bold'
+  const logoForNav = (isDarkNav && meta.logoReverseUrl) ? meta.logoReverseUrl : (meta.logoUrl || '')
+  const logoForFooter = meta.logoReverseUrl || meta.logoUrl || ''
+
+  const response = await getClient().chat.completions.create({
+    model: 'gpt-4.1-mini',
+    max_tokens: 4000,
+    messages: [
+      {
+        role: 'user',
+        content: `Generate ONLY the <nav> and <footer> HTML for a static website. These will be reused on every page.
+
+BUSINESS: ${meta.businessName}
+${meta.tagline ? `TAGLINE: ${meta.tagline}` : ''}
+${meta.contactPhone ? `PHONE: ${meta.contactPhone}` : ''}
+${meta.contactEmail ? `EMAIL: ${meta.contactEmail}` : ''}
+${meta.address ? `ADDRESS: ${meta.address}` : ''}
+NAVIGATION LINKS: ${navLinks}
+${logoForNav ? `NAV LOGO: <img src="${logoForNav}" alt="${meta.businessName}" style="height:2.2rem;">` : `NAV BRAND TEXT: ${meta.businessName}`}
+${logoForFooter ? `FOOTER LOGO: <img src="${logoForFooter}" alt="${meta.businessName}" style="height:2rem;">` : ''}
+
+Return a JSON object with two keys (no markdown fences):
+{
+  "nav": "<nav>...complete nav HTML...</nav>",
+  "footer": "<footer>...complete footer HTML...</footer>"
+}
+
+Nav structure: <nav> > .nav-container > [ .nav-brand (a, with logo img or text), input.nav-toggle#nav-toggle(type=checkbox), label.nav-toggle-label[for="nav-toggle"] with 3 <span>, ul.nav-links > li > a ]
+- Navigation hrefs: use EXACTLY as given above. Do NOT modify them.
+- The hamburger label must have exactly 3 <span> elements.
+- Include Font Awesome icons in nav if appropriate.
+
+Footer structure: <footer> > .container > .footer-content (grid) > .footer-section columns with: about/description, quick links, contact info (with FA icons), social links. Then .footer-bottom for copyright.
+- Use Font Awesome icons for contact (fa-phone, fa-envelope, fa-map-marker-alt) and social (fa-facebook, fa-twitter, fa-instagram, fa-linkedin).
+- Footer logo in the first footer-section if FOOTER LOGO is provided.
+- Copyright: © ${new Date().getFullYear()} ${meta.businessName}. All rights reserved.
+
+Return ONLY the JSON, no explanation.`,
+      },
+    ],
+  })
+
+  tokenTracker.track('Nav & Footer', {
+    input_tokens: response.usage?.prompt_tokens ?? 0,
+    output_tokens: response.usage?.completion_tokens ?? 0,
+  })
+
+  const raw = response.choices[0]?.message?.content || '{}'
+  try {
+    const cleaned = raw.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '')
+    const parsed = JSON.parse(cleaned)
+    return { navHtml: parsed.nav || '', footerHtml: parsed.footer || '' }
+  } catch {
+    // Fallback shell
+    return {
+      navHtml: `<nav><div class="nav-container"><a class="nav-brand" href="/">${meta.businessName}</a></div></nav>`,
+      footerHtml: `<footer><div class="container"><div class="footer-bottom"><p>© ${new Date().getFullYear()} ${meta.businessName}</p></div></div></footer>`,
+    }
+  }
+}
+
+/** Generate only the <main> content for a page (no nav/footer) */
+async function generatePageContent(blueprint: SiteBlueprint, page: PageBlueprint, template: string = 'modern'): Promise<string> {
+  const { meta } = blueprint
+  const industrySeed = (meta.industry || 'business').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase()
+  const pageSeed = page.slug.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase() || 'home'
 
   const sectionsDesc = (page.sections ?? [])
     .map((s, i) => {
@@ -266,72 +338,49 @@ async function generatePage(blueprint: SiteBlueprint, page: PageBlueprint, templ
     })
     .join('\n')
 
-  // Build relative navigation links for this page's depth
-  const rootPrefix = depth === 0 ? './' : '../'.repeat(depth)
-  const navDesc = navigation.map((n) => {
-    const href = n.href === '/'
-      ? rootPrefix
-      : rootPrefix + n.href.replace(/^\//, '') + '/'
-    return `${n.label} → ${href}`
-  }).join(', ')
-
-  const schemaSpecs = buildSchemaForPage(blueprint, page)
-
   const response = await getClient().chat.completions.create({
     model: 'gpt-4.1-mini',
-    max_tokens: 16000,
+    max_tokens: 12000,
     messages: [
       {
         role: 'user',
-        content: `Generate a complete HTML page for a static website.
+        content: `Generate ONLY the <main> content (no <html>, <head>, <nav>, or <footer>) for a page on a static website.
 
 ${CSS_CLASS_REFERENCE}
 
 BUSINESS: ${meta.businessName}
-${meta.tagline ? `TAGLINE: ${meta.tagline}` : ''}
 ${meta.description ? `DESCRIPTION: ${meta.description}` : ''}
-${meta.contactPhone ? `PHONE: ${meta.contactPhone}` : ''}
-${meta.contactEmail ? `EMAIL: ${meta.contactEmail}` : ''}
-${meta.address ? `ADDRESS: ${meta.address}` : ''}
+INDUSTRY: ${meta.industry || 'general'}
 
 PAGE: ${page.title} (${page.pageType})
 SLUG: ${page.slug}
 
-NAVIGATION: ${navDesc}
-
 SECTIONS:
 ${sectionsDesc}
 
-SEO:
-- Title: ${page.seo?.title || page.title}
-- Description: ${page.seo?.description || ''}
-${page.seo?.ogImage ? `- OG Image: ${page.seo.ogImage}` : ''}
-
-SCHEMA JSON-LD TO INCLUDE:
-${JSON.stringify(schemaSpecs, null, 2)}
-
 Requirements:
-- Complete HTML5 document with <!DOCTYPE html>
-- Link to ALL THREE stylesheets: "${baseCssPath}", "${themeCssPath}", and "${templateCssPath}" (external stylesheets — use these EXACT paths). Order: base.css first, then theme.css, then template.css so each layer can override the previous.
-- Use ONLY the CSS classes listed above. Do NOT invent new class names or write inline styles or <style> blocks.
-- Semantic HTML: <header> is NOT used — the nav is a top-level <nav> element. Use <main>, <section>, <footer>.
-- Exactly ONE <h1> tag per page
-- Proper heading hierarchy (H1 → H2 → H3, no skipping)
-- All schema JSON-LD in a single <script type="application/ld+json"> with @graph array in <head>
-- Proper <title>, meta description, viewport, lang="en", charset, OG tags
-- Navigation structure: <nav> > .nav-container > [ .nav-brand (a), input.nav-toggle#nav-toggle, label.nav-toggle-label[for="nav-toggle"] with 3 <span>, ul.nav-links > li > a ]
-- The hamburger label must contain exactly 3 <span> elements (the CSS animates them into an X)
-- Navigation links MUST use the EXACT href values from the NAVIGATION list above. Do NOT change them to absolute paths.
-- Current page nav link gets class="active"
-- Footer structure: <footer> > .container > .footer-content (grid) > .footer-section columns; then .footer-bottom for copyright
-- Content must be scannable: short paragraphs, bullet points where appropriate
-- FAQ sections: wrap in .faq-list, use <details> + <summary> for each Q&A, answer in <div>; ALSO include FAQPage schema
-- Contact info visible in HTML AND in schema
-- Images use descriptive alt text
-- Add appropriate aria-labels for accessibility
-- If content sections seem thin, expand them with plausible professional content that fits the business
+- Return ONLY the content that goes inside <main>...</main>. Do NOT include <!DOCTYPE>, <html>, <head>, <nav>, or <footer>.
+- Start with the hero section if this is a homepage or landing page.
+- HERO SECTIONS: The hero MUST be a full-width background image section. Use EXACTLY this structure:
+  <section class="hero" style="background-image: url('https://picsum.photos/seed/${industrySeed}-${pageSeed}/1600/800'); background-size: cover; background-position: center;">
+    <div class="hero-overlay"></div>
+    <div class="container">...hero text content (h1, p, buttons)...</div>
+  </section>
+  The .hero-overlay provides a dark semi-transparent overlay for text readability. ALWAYS include it.
+- Use ONLY the CSS classes listed above. Do NOT invent new class names.
+- EVERY <section> MUST contain a <div class="container"> as its first child.
+- Exactly ONE <h1> tag (in the hero or first section).
+- Proper heading hierarchy (H1 → H2 → H3).
+- Use Font Awesome icons: service items, features, contact info (fa-phone, fa-envelope, fa-map-marker-alt).
+- Use Picsum for ALL images: https://picsum.photos/seed/{keyword}/{width}/{height} — keywords must be single lowercase words or hyphenated (no spaces, no slashes). Use unique keywords per image.
+  - Service cards: https://picsum.photos/seed/repair/600/400
+  - Team: https://picsum.photos/seed/person1/400/400
+  - Gallery: https://picsum.photos/seed/project1/600/600
+- FAQ sections: .faq-list with <details>/<summary>.
+- Content must be scannable: short paragraphs, bullet points.
+- Expand thin sections with plausible professional content.
 
-Return ONLY the HTML code, no explanation.`,
+Return ONLY the HTML content for <main>, no explanation.`,
       },
     ],
   })
@@ -344,6 +393,74 @@ Return ONLY the HTML code, no explanation.`,
   })
 
   return text.replace(/^```html\n?/m, '').replace(/\n?```$/m, '')
+}
+
+/** Assemble a full HTML page from shared shell + page content */
+function assembleFullPage(
+  blueprint: SiteBlueprint,
+  page: PageBlueprint,
+  shell: SiteShell,
+  mainContent: string,
+  template: string
+): string {
+  const { meta, navigation } = blueprint
+  const depth = page.slug === '/' ? 0 : page.slug.replace(/^\//, '').split('/').length
+  const rootPrefix = depth === 0 ? './' : '../'.repeat(depth)
+  const baseCssPath = rootPrefix + 'base.css'
+  const themeCssPath = rootPrefix + 'theme.css'
+  const templateCssPath = rootPrefix + 'template.css'
+
+  const seo = page.seo ?? { title: page.title, description: '' }
+  const schemaSpecs = buildSchemaForPage(blueprint, page)
+
+  // Build nav with active link for this page
+  let navHtml = shell.navHtml
+  // Set active class on current page's nav link
+  for (const navItem of navigation) {
+    const href = navItem.href === '/'
+      ? rootPrefix
+      : rootPrefix + navItem.href.replace(/^\//, '') + '/'
+    // Replace href values with relative versions
+    if (navItem.href === page.slug) {
+      navHtml = navHtml.replace(
+        new RegExp(`href="${navItem.href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g'),
+        `href="${href}" class="active" aria-current="page"`
+      )
+    } else {
+      navHtml = navHtml.replace(
+        new RegExp(`href="${navItem.href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g'),
+        `href="${href}"`
+      )
+    }
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${seo.title}</title>
+  <meta name="description" content="${seo.description}">
+  <meta property="og:title" content="${seo.title}">
+  <meta property="og:description" content="${seo.description}">
+  <meta property="og:type" content="website">
+  ${meta.faviconUrl ? `<link rel="icon" href="${meta.faviconUrl}">` : ''}
+  <link rel="stylesheet" href="${baseCssPath}">
+  <link rel="stylesheet" href="${themeCssPath}">
+  <link rel="stylesheet" href="${templateCssPath}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script type="application/ld+json">
+${JSON.stringify({ '@context': 'https://schema.org', '@graph': schemaSpecs }, null, 2)}
+  </script>
+</head>
+<body>
+${navHtml}
+<main>
+${mainContent}
+</main>
+${shell.footerHtml}
+</body>
+</html>`
 }
 
 /** Build schema.org JSON-LD specs for a page */

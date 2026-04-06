@@ -188,10 +188,12 @@ li { margin-bottom: var(--space-xs); }
 }
 
 .section--surface {
+  padding: var(--space-3xl) 0;
   background-color: var(--color-surface);
 }
 
 .section--dark {
+  padding: var(--space-3xl) 0;
   background-color: var(--color-dark);
   color: var(--color-dark-text);
 }
@@ -231,6 +233,43 @@ li { margin-bottom: var(--space-xs); }
 @media (min-width: 1024px) {
   .grid--3 { grid-template-columns: repeat(3, 1fr); }
   .grid--4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ============================================================
+   AUTO-FIT GRID — centers last row items automatically
+   Used by features-grid, card-grid, testimonials-grid, etc.
+   ============================================================ */
+.auto-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xl);
+  justify-content: center;
+}
+
+.auto-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .auto-grid > * {
+    flex: 0 1 calc(50% - var(--space-xl));
+  }
+}
+
+@media (min-width: 1024px) {
+  /* 3 per row for 3, 5, 6, 9+ items */
+  .auto-grid > * {
+    flex: 0 1 calc(33.333% - var(--space-xl));
+  }
+  /* 4 per row when exactly 4 or 8 items */
+  .auto-grid--4 > * {
+    flex: 0 1 calc(25% - var(--space-xl));
+  }
+  /* 2 per row when exactly 2 items */
+  .auto-grid--2 > * {
+    flex: 0 1 calc(50% - var(--space-xl));
+  }
 }
 
 /* ============================================================
@@ -387,6 +426,8 @@ input.nav-toggle:checked ~ .nav-links {
    ============================================================ */
 .hero {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  background-size: cover;
+  background-position: center;
   color: var(--color-white);
   padding: var(--space-4xl) 0;
   position: relative;
@@ -394,14 +435,12 @@ input.nav-toggle:checked ~ .nav-links {
   text-align: center;
 }
 
-/* Subtle dot overlay for visual depth */
-.hero::before {
-  content: '';
+/* Dark overlay for background image readability */
+.hero-overlay {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.08) 1px, transparent 0);
-  background-size: 24px 24px;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 0;
 }
 
 .hero .container {
@@ -565,15 +604,23 @@ input.nav-toggle:checked ~ .nav-links {
 }
 
 .card-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: 1fr;
+  justify-content: center;
+}
+
+.card-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .card-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
+  .card-grid > * { flex: 0 1 calc(50% - var(--space-xl)); }
+}
+
+@media (min-width: 1024px) {
+  .card-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 /* ============================================================
@@ -617,21 +664,23 @@ input.nav-toggle:checked ~ .nav-links {
 }
 
 .features-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: 1fr;
+  justify-content: center;
+}
+
+.features-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .features-grid > * { flex: 0 1 calc(50% - var(--space-xl)); }
 }
 
 @media (min-width: 1024px) {
-  .features-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .features-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 /* ============================================================
@@ -672,21 +721,23 @@ input.nav-toggle:checked ~ .nav-links {
 }
 
 .testimonials-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: 1fr;
+  justify-content: center;
+}
+
+.testimonials-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .testimonials-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .testimonials-grid > * { flex: 0 1 calc(50% - var(--space-xl)); }
 }
 
 @media (min-width: 1024px) {
-  .testimonials-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .testimonials-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 /* ============================================================
@@ -916,16 +967,20 @@ footer {
    STATS
    ============================================================ */
 .stats-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: repeat(2, 1fr);
+  justify-content: center;
   text-align: center;
 }
 
+.stats-grid > * {
+  flex: 0 1 calc(50% - var(--space-xl));
+  min-width: 0;
+}
+
 @media (min-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  .stats-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 .stat-number {
@@ -1016,22 +1071,24 @@ footer {
    PRICING
    ============================================================ */
 .pricing-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: 1fr;
-  align-items: start;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.pricing-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .pricing-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .pricing-grid > * { flex: 0 1 calc(50% - var(--space-xl)); }
 }
 
 @media (min-width: 1024px) {
-  .pricing-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .pricing-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 .pricing-card {
@@ -1111,21 +1168,23 @@ footer {
    TEAM
    ============================================================ */
 .team-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xl);
-  grid-template-columns: 1fr;
+  justify-content: center;
+}
+
+.team-grid > * {
+  flex: 0 1 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .team-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .team-grid > * { flex: 0 1 calc(50% - var(--space-xl)); }
 }
 
 @media (min-width: 1024px) {
-  .team-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .team-grid > * { flex: 0 1 calc(25% - var(--space-xl)); }
 }
 
 .team-member {
@@ -1157,21 +1216,23 @@ footer {
    GALLERY
    ============================================================ */
 .gallery-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-md);
-  grid-template-columns: repeat(2, 1fr);
+  justify-content: center;
+}
+
+.gallery-grid > * {
+  flex: 0 1 calc(50% - var(--space-md));
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
-  .gallery-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .gallery-grid > * { flex: 0 1 calc(33.333% - var(--space-md)); }
 }
 
 @media (min-width: 1024px) {
-  .gallery-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  .gallery-grid > * { flex: 0 1 calc(25% - var(--space-md)); }
 }
 
 .gallery-grid img {

@@ -24,6 +24,7 @@ export interface SiteMeta {
   industry?: string
   description: string
   logoUrl?: string
+  logoReverseUrl?: string
   faviconUrl?: string
   contactEmail?: string
   contactPhone?: string

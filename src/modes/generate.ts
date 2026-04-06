@@ -51,6 +51,8 @@ export async function generate(input: GenerateInput, outputDir: string, options:
       industry: input.clientContent.industry,
       description: input.clientContent.description,
       logoUrl: input.clientContent.logoUrl,
+      logoReverseUrl: input.clientContent.logoReverseUrl,
+      faviconUrl: input.clientContent.faviconUrl,
       contactEmail: input.clientContent.contactEmail,
       contactPhone: input.clientContent.contactPhone,
       address: input.clientContent.address,
@@ -127,14 +129,13 @@ Return a JSON object (no markdown, no explanation) with this exact structure:
 }
 
 Rules:
+- Follow the BRIEF exactly. If it says "a 3-page site" create exactly 3 pages. If it lists specific pages, create only those pages. Never add extra pages beyond what the brief asks for.
 - Homepage is always first, contact page always last
-- 4-8 pages total depending on the business type
 - Every service page should have an FAQ section
 - Homepage needs: hero, features/services overview, testimonials, CTA
 - Each page needs 3-6 sections
 - SEO titles must be 50-70 characters, descriptions 140-170 characters
-- Include the business name in the homepage H1/hero
-- Think about what pages this specific type of business actually needs`,
+- Include the business name in the homepage H1/hero`,
       },
     ],
   })
