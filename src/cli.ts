@@ -37,9 +37,8 @@ program
 
     await rebuild(
       {
-        mode: 'rebuild',
         url: opts.url,
-        auditorApiKey: opts.auditorKey,
+        maxPages: parseInt(opts.maxPages) || 20,
       },
       outputDir
     )

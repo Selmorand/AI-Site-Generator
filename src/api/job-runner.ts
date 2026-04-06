@@ -93,12 +93,10 @@ export async function runJob(
         designOverride,
       })
     } else if (mode === 'rebuild') {
-      const input: RebuildInput = {
-        mode: 'rebuild',
-        url: params.url as string,
-        auditorApiKey: params.auditorKey as string | undefined,
-      }
-      await rebuild(input, outputDir)
+      await rebuild(
+        { url: params.url as string, maxPages: (params.maxPages as number) || 50 },
+        outputDir
+      )
     } else if (mode === 'clone') {
       const input: CloneInput = {
         mode: 'clone',
