@@ -51,6 +51,19 @@ app.get('/', (_req, res) => {
 // API routes
 app.use('/api', apiRoutes)
 
+// Serve site-templates directory (thumbnails + template files)
+app.use('/site-templates', express.static(path.resolve(process.cwd(), 'site-templates')))
+
+// Serve template catalogue
+app.get('/api/catalogue', (_req, res) => {
+  const catPath = path.resolve(process.cwd(), 'site-templates', 'catalogue.json')
+  if (fs.existsSync(catPath)) {
+    res.json(JSON.parse(fs.readFileSync(catPath, 'utf-8')))
+  } else {
+    res.json([])
+  }
+})
+
 // Serve template CSS files for live preview swapping
 import * as fs from 'fs'
 app.get('/templates/:file', (req, res) => {

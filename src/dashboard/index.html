@@ -261,6 +261,49 @@
       font-size: 0.875rem;
     }
 
+    /* Template gallery */
+    .tpl-gallery {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+    .tpl-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+    .tpl-card:hover { border-color: var(--primary-light); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .tpl-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+    .tpl-card img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+    .tpl-card-label {
+      padding: 0.25rem 0.4rem;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tpl-search-input {
+      float: right;
+      width: 120px;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
     /* Upload boxes */
     .upload-grid {
       display: grid;
@@ -787,8 +830,12 @@
           <!-- Clone Form -->
           <div class="form-section" id="form-clone">
             <div class="field">
-              <label>Inspiration URL <span class="req">*</span></label>
-              <input type="url" name="inspirationUrl" placeholder="https://nice-site.com">
+              <label>Inspiration URL <span class="req">*</span> <small style="color:var(--text-muted);font-weight:400;">(site to clone layout from)</small></label>
+              <input type="url" name="inspirationUrl" placeholder="https://nice-looking-site.com">
+            </div>
+            <div class="field">
+              <label>Client Site URL <small style="color:var(--text-muted);font-weight:400;">(optional — extract content from existing site)</small></label>
+              <input type="url" name="clientUrl" placeholder="https://clients-current-site.com">
             </div>
             <div class="field">
               <label>Business Name <span class="req">*</span></label>
@@ -817,6 +864,19 @@
           </div>
 
           <button class="submit-btn" id="submit-btn">Generate Site</button>
+          <button class="submit-btn" id="apply-tpl-btn" style="background:var(--success); margin-top:0.25rem; display:none;">Apply Selected Template</button>
+          <a href="#" id="clear-tpl-btn" style="display:none; text-align:center; font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;" onclick="deselectTemplate(); return false;">Clear template selection — use AI Generate instead</a>
+        </div>
+      </div>
+
+      <!-- Template Gallery -->
+      <div class="panel">
+        <div class="panel-header">
+          Browse Templates
+          <input type="text" id="tpl-search" placeholder="Search..." class="tpl-search-input">
+        </div>
+        <div class="tpl-gallery" id="tpl-gallery">
+          <div class="empty-state">Loading templates...</div>
         </div>
       </div>
 
@@ -1629,7 +1689,169 @@
       } catch { /* ignore */ }
     }
 
+    // Template gallery
+    let allTemplates = [];
+    let selectedTemplate = null;
+
+    async function loadCatalogue() {
+      try {
+        const res = await fetch('/api/catalogue');
+        allTemplates = await res.json();
+        renderGallery(allTemplates);
+      } catch {
+        $('#tpl-gallery').innerHTML = '<div class="empty-state">No templates found. Run: node scripts/generate-thumbnails.cjs</div>';
+      }
+    }
+
+    function renderGallery(templates) {
+      const gallery = $('#tpl-gallery');
+      if (templates.length === 0) {
+        gallery.innerHTML = '<div class="empty-state">No templates match</div>';
+        return;
+      }
+      gallery.innerHTML = templates.map((t, i) => `
+        <div class="tpl-card${selectedTemplate && selectedTemplate.file === t.file && selectedTemplate.template === t.template ? ' selected' : ''}" data-idx="${i}" onclick="selectTemplate(${i})">
+          <img src="/site-templates/${t.thumbnail}" alt="${t.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22100%22><rect fill=%22%23e2e8f0%22 width=%22300%22 height=%22100%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%2394a3b8%22 font-size=%2212%22>${t.name}</text></svg>'">
+          <div class="tpl-card-label">${t.name}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectTemplate(idx) {
+      selectedTemplate = allTemplates[idx];
+      renderGallery(allTemplates.filter(t => {
+        const search = $('#tpl-search').value.toLowerCase();
+        return !search || t.name.toLowerCase().includes(search) || t.template.toLowerCase().includes(search);
+      }));
+      // Show a preview of the template
+      const previewUrl = `/site-templates/${selectedTemplate.template}/${selectedTemplate.file}`;
+      $('#preview-frame').src = previewUrl;
+      $('#preview-bar').innerHTML = `
+        <span style="font-size:0.8rem;font-weight:600;">Template: ${selectedTemplate.name}</span>
+        <a href="${previewUrl}" target="_blank">Open in New Tab</a>
+      `;
+      // Show apply button and clear link, hide generate button and old template picker
+      $('#apply-tpl-btn').style.display = 'block';
+      $('#clear-tpl-btn').style.display = 'block';
+      $('#submit-btn').style.display = 'none';
+      // Hide old template/colour/font pickers
+      document.querySelectorAll('#form-generate .field').forEach(function(f) {
+        var label = f.querySelector('label');
+        if (label && (label.textContent.includes('Template') || label.textContent.includes('Colours') || label.textContent.includes('Fonts'))) {
+          f.style.display = 'none';
+        }
+      });
+    }
+
+    // Deselect template — restore generate mode
+    function deselectTemplate() {
+      selectedTemplate = null;
+      renderGallery(allTemplates);
+      $('#apply-tpl-btn').style.display = 'none';
+      $('#clear-tpl-btn').style.display = 'none';
+      $('#submit-btn').style.display = 'block';
+      document.querySelectorAll('#form-generate .field').forEach(function(f) {
+        f.style.display = '';
+      });
+    }
+
+    // Apply selected template with business content
+    $('#apply-tpl-btn').addEventListener('click', async () => {
+      if (!selectedTemplate) return;
+
+      // Get business details from the generate form
+      const form = $('#form-generate');
+      const name = form.querySelector('[name="name"]').value.trim();
+      const description = form.querySelector('[name="description"]').value.trim();
+
+      if (!name || !description) {
+        alert('Please fill in Business Name and Description in the Generate form before applying a template.');
+        return;
+      }
+
+      const btn = $('#apply-tpl-btn');
+      btn.disabled = true;
+      btn.textContent = 'Applying template...';
+      clearLog();
+      clearTokens();
+      addLog(`Applying template: ${selectedTemplate.name}`, '');
+
+      try {
+        const res = await fetch('/api/apply-template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template: selectedTemplate.template,
+            file: selectedTemplate.file,
+            name,
+            description,
+            industry: form.querySelector('[name="industry"]')?.value || '',
+            phone: form.querySelector('[name="phone"]')?.value || '',
+            email: form.querySelector('[name="email"]')?.value || '',
+            address: form.querySelector('[name="address"]')?.value || '',
+            logoUrl: uploadedUrls.logoUrl || '',
+            faviconUrl: uploadedUrls.faviconUrl || '',
+          }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          let eventType = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) eventType = line.slice(7);
+            else if (line.startsWith('data: ') && eventType) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (eventType === 'progress') {
+                  const isOk = data.message.includes('✓');
+                  addLog(data.message, isOk ? 'success' : '');
+                }
+                if (eventType === 'complete') {
+                  addLog('Template applied!', 'success');
+                  if (data.tokens) {
+                    addLog(`Tokens: ${data.tokens.totalTokens.toLocaleString()} | Cost: $${data.tokens.estimatedCost.toFixed(4)}`, 'system');
+                  }
+                  currentPreviewJobId = data.jobId;
+                  showPreview(data.jobId);
+                  showEditChat();
+                  showImageManager();
+                }
+                if (eventType === 'error') {
+                  addLog('Error: ' + data.message, 'error');
+                }
+              } catch {}
+              eventType = '';
+            }
+          }
+        }
+      } catch (e) {
+        addLog('Error: ' + e.message, 'error');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Apply Selected Template';
+      loadJobs();
+    });
+
+    $('#tpl-search').addEventListener('input', () => {
+      const search = $('#tpl-search').value.toLowerCase();
+      const filtered = allTemplates.filter(t =>
+        t.name.toLowerCase().includes(search) || t.template.toLowerCase().includes(search)
+      );
+      renderGallery(filtered);
+    });
+
     // Initial load
+    loadCatalogue();
     loadJobs();
   </script>
 </body>

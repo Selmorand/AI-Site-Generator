@@ -425,6 +425,214 @@ router.post('/jobs/:id/replace-image', (req: Request, res: Response) => {
   res.json({ success: true, replacements })
 })
 
+/**
+ * POST /api/apply-template — copy a template and swap content using LLM
+ */
+router.post('/apply-template', async (req: Request, res: Response) => {
+  const { template, file, name, description, industry, phone, email, address, logoUrl, faviconUrl } = req.body
+
+  if (!template || !file || !name || !description) {
+    res.status(400).json({ error: 'template, file, name, and description required' })
+    return
+  }
+
+  const templateDir = path.resolve(process.cwd(), 'site-templates', template)
+  if (!fs.existsSync(templateDir)) {
+    res.status(404).json({ error: 'Template not found' })
+    return
+  }
+
+  // Generate job ID
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+  const jobId = `${slug}-${Date.now()}`
+  const outputDir = path.resolve('./output', jobId)
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  })
+  req.setTimeout(0)
+
+  const send = (type: string, data: Record<string, unknown>) => {
+    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`)
+  }
+
+  try {
+    // Step 1: Determine which sub-template to copy
+    // For multi-template collections (nice-mega), copy only the relevant sub-template
+    const selectedFile = file as string
+    const subTemplateName = selectedFile
+      .replace(/^index-/, '')
+      .replace(/^home-/, '')
+      .replace(/\.html$/, '')
+
+    // Check if there's a matching subdirectory for this template variant
+    const subDir = path.join(templateDir, subTemplateName)
+    const hasSubDir = fs.existsSync(subDir) && fs.statSync(subDir).isDirectory()
+
+    send('progress', { message: '[Template] Copying template files...' })
+
+    if (hasSubDir) {
+      // Copy the sub-template's asset folder
+      copyDirSync(subDir, outputDir)
+      // Copy the main HTML file as index.html
+      const mainHtml = path.join(templateDir, selectedFile)
+      if (fs.existsSync(mainHtml)) {
+        fs.copyFileSync(mainHtml, path.join(outputDir, 'index.html'))
+      }
+      // Copy shared assets (css, js, fonts at template root level)
+      for (const shared of ['css', 'js', 'fonts', 'vendor', 'lib', 'assets', 'img']) {
+        const sharedDir = path.join(templateDir, shared)
+        if (fs.existsSync(sharedDir) && fs.statSync(sharedDir).isDirectory()) {
+          copyDirSync(sharedDir, path.join(outputDir, shared))
+        }
+      }
+      // Copy any shared HTML pages (about, contact, etc.) that reference this sub-template
+      const rootFiles = fs.readdirSync(templateDir)
+      for (const f of rootFiles) {
+        if (f.endsWith('.html') && f !== selectedFile && !f.startsWith('index-') && !f.startsWith('home-')) {
+          fs.copyFileSync(path.join(templateDir, f), path.join(outputDir, f))
+        }
+      }
+    } else {
+      // Simple template — copy everything
+      copyDirSync(templateDir, outputDir)
+      // If the selected file isn't index.html, copy it as index.html
+      if (selectedFile !== 'index.html') {
+        const mainHtml = path.join(outputDir, selectedFile)
+        if (fs.existsSync(mainHtml)) {
+          fs.copyFileSync(mainHtml, path.join(outputDir, 'index.html'))
+        }
+      }
+    }
+
+    // Step 2: Find HTML files to customise (only in output dir, limit to reasonable count)
+    const htmlFiles: string[] = []
+    findHtmlFiles(outputDir, htmlFiles)
+    // Limit to max 20 pages to avoid huge API costs
+    const pagesToProcess = htmlFiles.slice(0, 20)
+    send('progress', { message: `[Template] Found ${htmlFiles.length} pages, customising ${pagesToProcess.length}` })
+
+    // Step 3: Use LLM to swap content in each page
+    const client = new OpenAI()
+    let totalInput = 0
+    let totalOutput = 0
+
+    for (const htmlFile of pagesToProcess) {
+      const relPath = path.relative(outputDir, htmlFile).replace(/\\/g, '/')
+      send('progress', { message: `  Customising: ${relPath}` })
+
+      try {
+        const currentHtml = fs.readFileSync(htmlFile, 'utf-8')
+
+        // Skip files that are too large (likely not content pages)
+        if (currentHtml.length > 100000) {
+          send('progress', { message: `  Skipped ${relPath} (too large)` })
+          continue
+        }
+
+        const response = await client.chat.completions.create({
+          model: 'gpt-4.1-mini',
+          max_tokens: 16000,
+          messages: [{
+            role: 'user',
+            content: `You are customising a website template. Replace ALL placeholder/demo content with real content for this business. Keep the EXACT same HTML structure, classes, and layout — only change the text content, headings, descriptions, and image alt text.
+
+BUSINESS DETAILS:
+Name: ${name}
+Description: ${description}
+${industry ? `Industry: ${industry}` : ''}
+${phone ? `Phone: ${phone}` : ''}
+${email ? `Email: ${email}` : ''}
+${address ? `Address: ${address}` : ''}
+${logoUrl ? `Logo URL: ${logoUrl}` : ''}
+${faviconUrl ? `Favicon URL: ${faviconUrl}` : ''}
+
+RULES:
+- Keep ALL HTML tags, classes, IDs, data attributes, and structure EXACTLY as they are
+- Only replace text content between tags (headings, paragraphs, list items, button text, nav labels)
+- Replace placeholder names like "Company Name", "Lorem Ipsum", etc. with real business content
+- Write professional, industry-appropriate content — not generic filler
+- Keep the same number of sections, cards, team members, etc.
+- Update meta title and description for SEO
+- Update copyright year to ${new Date().getFullYear()} and company name
+- If there's a logo img tag, update the alt text to the business name
+${logoUrl ? `- Replace any logo image src with: ${logoUrl}` : ''}
+${faviconUrl ? `- Update favicon href to: ${faviconUrl}` : ''}
+- Keep all CSS links, JS links, and asset paths unchanged
+- Do NOT add or remove any HTML elements
+- Replace ALL demo/placeholder image src attributes with Picsum placeholders relevant to the business:
+  Format: https://picsum.photos/seed/{keyword}/{width}/{height}
+  Use keywords related to the business industry (e.g. "${industry || 'business'}", "office", "team", "service").
+  Use different keywords for each image so they look different.
+  Keep the original image dimensions if specified, otherwise use: hero 1600/800, cards 600/400, team 400/400.
+  Also replace background-image URLs in inline styles with Picsum URLs.
+  Do NOT replace logo images or favicon — only content/demo images.
+
+CURRENT HTML:
+${currentHtml}
+
+Return the COMPLETE modified HTML. No markdown fences, no explanation.`,
+          }],
+        })
+
+        totalInput += response.usage?.prompt_tokens ?? 0
+        totalOutput += response.usage?.completion_tokens ?? 0
+
+        let newHtml = response.choices[0]?.message?.content || ''
+        newHtml = newHtml.replace(/^```html?\n?/m, '').replace(/\n?```$/m, '')
+
+        if (newHtml.includes('<!DOCTYPE') || newHtml.includes('<html') || newHtml.includes('<head')) {
+          fs.writeFileSync(htmlFile, newHtml, 'utf-8')
+          send('progress', { message: `  ✓ ${relPath}` })
+        } else {
+          send('progress', { message: `  ✗ ${relPath} — invalid response, kept original` })
+        }
+      } catch (err) {
+        send('progress', { message: `  ✗ ${relPath} — ${(err as Error).message}` })
+      }
+    }
+
+    send('complete', {
+      jobId,
+      previewUrl: `/preview/${jobId}/`,
+      tokens: { totalInput, totalOutput, totalTokens: totalInput + totalOutput, estimatedCost: (totalInput / 1_000_000) * 0.4 + (totalOutput / 1_000_000) * 1.6 },
+    })
+  } catch (err) {
+    send('error', { message: (err as Error).message })
+  }
+
+  res.end()
+})
+
+function copyDirSync(src: string, dest: string) {
+  fs.mkdirSync(dest, { recursive: true })
+  const entries = fs.readdirSync(src, { withFileTypes: true })
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name)
+    const destPath = path.join(dest, entry.name)
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath)
+    } else {
+      fs.copyFileSync(srcPath, destPath)
+    }
+  }
+}
+
+function findHtmlFiles(dir: string, results: string[]) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory() && !entry.name.startsWith('.')) {
+      findHtmlFiles(full, results)
+    } else if (entry.name.endsWith('.html')) {
+      results.push(full)
+    }
+  }
+}
+
 function adjustHex(hex: string, amount: number): string {
   const num = parseInt(hex.replace('#', ''), 16)
   const r = Math.min(255, Math.max(0, (num >> 16) + amount))

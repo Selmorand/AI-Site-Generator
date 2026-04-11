@@ -65,16 +65,13 @@ program
 
     await clone(
       {
-        mode: 'clone',
         inspirationUrl: opts.inspiration,
-        clientContent: {
-          businessName: opts.name,
-          description: opts.description,
-          industry: opts.industry,
-          contactPhone: opts.phone,
-          contactEmail: opts.email,
-          address: opts.address,
-        },
+        businessName: opts.name,
+        description: opts.description,
+        industry: opts.industry,
+        phone: opts.phone,
+        email: opts.email,
+        address: opts.address,
       },
       outputDir
     )

@@ -168,8 +168,12 @@ NAVIGATION (use <nav> element, sticky top):
   .nav-links — <ul> of nav links; use input.nav-toggle:checked ~ .nav-links to show on mobile
   .nav-links a.active — highlighted current page link
 
-HERO:
-  .hero — full-width gradient hero section (primary→secondary, centered white text)
+HERO (choose ONE style per page):
+  Style A — Background image hero (full-width, centered text):
+    .hero — with inline background-image style + .hero-overlay div + .container
+  Style B — Split hero (text left, image right):
+    .hero-split > .hero-split-content (text side) + .hero-split-image (with background-image)
+    .hero-split--reverse — image left, text right
   .hero-cta — flex row of CTA buttons inside hero
 
 BUTTONS:
@@ -184,10 +188,22 @@ CARDS:
   .card — white card with border, shadow, hover lift
   .card-grid — responsive auto-fit grid for cards
 
-SERVICES / FEATURES:
-  .service-item — centered service card with border, hover lift
-  .feature-item — centered feature block (for icon + heading + text)
-  .features-grid — responsive 2→3 column grid for features
+SERVICES / FEATURES (choose a layout pattern):
+  Pattern A — Icon grid:
+    .features-grid > .icon-box (centered icon + heading + text)
+    .icon-box-icon — circular primary-bg icon wrapper (use FA icon inside)
+    .icon-box-icon--outline — outline variant
+    .icon-box-icon--square — square rounded variant
+  Pattern B — Icon rows (left-aligned):
+    .icon-box.icon-box--left — icon left, text right, horizontal layout
+  Pattern C — Image cards:
+    .card-grid > .image-card > img + .image-card-body (h3 + p)
+  Pattern D — Simple cards:
+    .card-grid > .card (heading + text, no image)
+  Legacy (still available):
+    .service-item — centered service card with border
+    .feature-item — centered feature block
+    .features-grid — responsive grid
 
 TESTIMONIALS:
   .testimonial — quote card with accent left border and opening-quote decoration
@@ -220,6 +236,17 @@ STATS:
 
 CTA:
   .cta — gradient call-to-action section (same style as hero, centered white text)
+
+SPLIT CONTENT (alternating image + text blocks):
+  .split — flex row (stacks on mobile): .split-content + .split-image > img
+  .split--reverse — image left, text right
+
+SECTION HEADERS (intro above grid/content):
+  .section-header — centered h2 + subtitle p (max-width 700px)
+  .section-header--left — left-aligned variant
+
+STEPS / PROCESS:
+  .steps-list > .step-item — auto-numbered steps (circle number + h3 + p)
 
 CONTACT:
   .contact-grid — 2-column grid (info + form)
@@ -359,28 +386,95 @@ SECTIONS:
 ${sectionsDesc}
 
 Requirements:
-- Return ONLY the content that goes inside <main>...</main>. Do NOT include <!DOCTYPE>, <html>, <head>, <nav>, or <footer>.
-- Start with the hero section if this is a homepage or landing page.
-- HERO SECTIONS: The hero MUST be a full-width background image section. Use EXACTLY this structure:
-  <section class="hero" style="background-image: url('https://picsum.photos/seed/${industrySeed}-${pageSeed}/1600/800'); background-size: cover; background-position: center;">
-    <div class="hero-overlay"></div>
-    <div class="container">...hero text content (h1, p, buttons)...</div>
-  </section>
-  The .hero-overlay provides a dark semi-transparent overlay for text readability. ALWAYS include it.
-- Use ONLY the CSS classes listed above. Do NOT invent new class names.
+- Return ONLY the content inside <main>. No <!DOCTYPE>, <html>, <head>, <nav>, or <footer>.
+- Use ONLY CSS classes from the reference above. Do NOT invent class names or use inline styles (except background-image on hero).
 - EVERY <section> MUST contain a <div class="container"> as its first child.
-- Exactly ONE <h1> tag (in the hero or first section).
-- Proper heading hierarchy (H1 → H2 → H3).
-- Use Font Awesome icons: service items, features, contact info (fa-phone, fa-envelope, fa-map-marker-alt).
-- Use Picsum for ALL images: https://picsum.photos/seed/{keyword}/{width}/{height} — keywords must be single lowercase words or hyphenated (no spaces, no slashes). Use unique keywords per image.
-  - Service cards: https://picsum.photos/seed/repair/600/400
-  - Team: https://picsum.photos/seed/person1/400/400
-  - Gallery: https://picsum.photos/seed/project1/600/600
-- FAQ sections: .faq-list with <details>/<summary>.
-- Content must be scannable: short paragraphs, bullet points.
-- Expand thin sections with plausible professional content.
+- Exactly ONE <h1> tag. Proper heading hierarchy (H1 → H2 → H3).
+- Use Font Awesome 6 icons throughout: <i class="fas fa-..."></i>
 
-Return ONLY the HTML content for <main>, no explanation.`,
+LAYOUT RULES — create visual variety by mixing these patterns:
+
+HERO (first section):
+  For homepages, use the split hero:
+    <section class="hero-split">
+      <div class="hero-split-content">
+        <h1>...</h1><p>...</p>
+        <div class="hero-cta"><a class="btn btn--primary btn--lg">...</a><a class="btn btn--outline btn--lg">...</a></div>
+      </div>
+      <div class="hero-split-image" style="background-image: url('https://picsum.photos/seed/${industrySeed}-hero/1600/800');"></div>
+    </section>
+  For subpages, use the background image hero:
+    <section class="hero" style="background-image: url('https://picsum.photos/seed/${industrySeed}-${pageSeed}/1600/800'); background-size: cover; background-position: center;">
+      <div class="hero-overlay"></div>
+      <div class="container"><h1>...</h1><p>...</p></div>
+    </section>
+
+FEATURE/SERVICE SECTIONS — alternate between these patterns (don't use the same one twice in a row):
+  Pattern 1 — Icon boxes (centered grid):
+    <div class="section-header"><h2>...</h2><p>...</p></div>
+    <div class="features-grid">
+      <div class="icon-box">
+        <div class="icon-box-icon"><i class="fas fa-..."></i></div>
+        <h3>...</h3><p>...</p>
+      </div>
+      ...repeat...
+    </div>
+  Pattern 2 — Image cards:
+    <div class="section-header"><h2>...</h2><p>...</p></div>
+    <div class="card-grid">
+      <div class="image-card">
+        <img src="https://picsum.photos/seed/{keyword}/600/400" alt="...">
+        <div class="image-card-body"><h3>...</h3><p>...</p></div>
+      </div>
+      ...repeat...
+    </div>
+  Pattern 3 — Split content (alternating image + text):
+    <div class="split">
+      <div class="split-content"><h2>...</h2><p>...</p></div>
+      <div class="split-image"><img src="https://picsum.photos/seed/{keyword}/800/600" alt="..."></div>
+    </div>
+    Then use .split.split--reverse for the next one to alternate sides.
+
+ABOUT / TEXT SECTIONS:
+  Use .split for image + text side by side, NOT just paragraphs stacked.
+
+PROCESS / HOW IT WORKS:
+  <div class="steps-list">
+    <div class="step-item"><div><h3>...</h3><p>...</p></div></div>
+    ...repeat (auto-numbered via CSS)...
+  </div>
+
+STATS:
+  <div class="stats-grid">
+    <div><div class="stat-number">500+</div><div class="stat-label">Projects</div></div>
+    ...repeat...
+  </div>
+
+TESTIMONIALS:
+  <div class="section-header"><h2>...</h2></div>
+  <div class="testimonials-grid">
+    <div class="testimonial"><p>"Quote..."</p><cite>Name, Title</cite></div>
+    ...repeat...
+  </div>
+
+CTA SECTION:
+  <section class="cta"><div class="container">
+    <h2>...</h2><p>...</p>
+    <div class="hero-cta"><a class="btn btn--accent btn--lg">...</a></div>
+  </div></section>
+
+IMAGE RULES:
+- Use Picsum for ALL images: https://picsum.photos/seed/{keyword}/{width}/{height}
+- Keywords: single lowercase words, hyphenated, NO spaces. Use unique keywords per image.
+- Hero: 1600/800, Cards: 600/400, Split: 800/600, Team: 400/400, Gallery: 600/600
+
+SECTION ORDER — create a natural flow, typically:
+  Homepage: hero → features/services → split about → stats → testimonials → CTA
+  Service page: hero → service detail (split) → process steps → pricing → FAQ → CTA
+  About page: hero → split story → team → stats → testimonials
+  Contact page: hero → contact-grid (info + form)
+
+Return ONLY the HTML, no explanation.`,
       },
     ],
   })

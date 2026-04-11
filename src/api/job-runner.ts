@@ -9,7 +9,7 @@ import { generate } from '../modes/generate.js'
 import { rebuild } from '../modes/rebuild.js'
 import { clone } from '../modes/clone.js'
 import { tokenTracker } from '../token-tracker.js'
-import type { GenerateInput, CloneInput, RebuildInput, DesignTokens } from '../types/blueprint.js'
+import type { GenerateInput, DesignTokens } from '../types/blueprint.js'
 
 export interface JobEvent {
   type: 'progress' | 'token' | 'complete' | 'error'
@@ -98,19 +98,20 @@ export async function runJob(
         outputDir
       )
     } else if (mode === 'clone') {
-      const input: CloneInput = {
-        mode: 'clone',
+      await clone({
         inspirationUrl: params.inspirationUrl as string,
-        clientContent: {
-          businessName: params.name as string,
-          description: params.description as string,
-          industry: params.industry as string | undefined,
-          contactPhone: params.phone as string | undefined,
-          contactEmail: params.email as string | undefined,
-          address: params.address as string | undefined,
-        },
-      }
-      await clone(input, outputDir)
+        clientUrl: params.clientUrl as string | undefined,
+        businessName: params.name as string,
+        description: params.description as string,
+        industry: params.industry as string | undefined,
+        phone: params.phone as string | undefined,
+        email: params.email as string | undefined,
+        address: params.address as string | undefined,
+        logoUrl: params.logoUrl as string | undefined,
+        logoReverseUrl: params.logoReverseUrl as string | undefined,
+        faviconUrl: params.faviconUrl as string | undefined,
+        maxPages: (params.maxPages as number) || 10,
+      }, outputDir)
     } else {
       throw new Error(`Unknown mode: ${mode}`)
     }
