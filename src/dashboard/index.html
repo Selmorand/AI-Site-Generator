@@ -933,6 +933,27 @@
           </div>
 
           <button class="submit-btn" id="submit-btn">Generate Site</button>
+          <!-- Template colour override -->
+          <div id="tpl-color-override" style="display:none; margin-top:0.5rem;">
+            <label style="font-size:0.8rem; font-weight:500; display:block; margin-bottom:0.25rem;">Override Template Colours</label>
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+              <div style="text-align:center;">
+                <label style="font-size:0.6rem; color:var(--text-muted);">Primary</label>
+                <input type="color" id="tpl-color-primary" value="#0000ff" style="width:30px;height:30px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+              </div>
+              <div style="text-align:center;">
+                <label style="font-size:0.6rem; color:var(--text-muted);">Secondary</label>
+                <input type="color" id="tpl-color-secondary" value="#333333" style="width:30px;height:30px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+              </div>
+              <div style="text-align:center;">
+                <label style="font-size:0.6rem; color:var(--text-muted);">Accent</label>
+                <input type="color" id="tpl-color-accent" value="#ff6600" style="width:30px;height:30px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+              </div>
+              <label style="font-size:0.65rem; color:var(--text-muted); display:flex; align-items:center; gap:0.25rem;">
+                <input type="checkbox" id="tpl-color-enable" checked> Apply colours
+              </label>
+            </div>
+          </div>
           <button class="submit-btn" id="apply-tpl-btn" style="background:var(--success); margin-top:0.25rem; display:none;">Apply Selected Template</button>
           <a href="#" id="clear-tpl-btn" style="display:none; text-align:center; font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;" onclick="deselectTemplate(); return false;">Clear template selection — use AI Generate instead</a>
         </div>
@@ -1908,7 +1929,15 @@
     async function loadCatalogue() {
       try {
         const res = await fetch('/api/catalogue');
-        allTemplates = await res.json();
+        const all = await res.json();
+        // Filter out entries where thumbnail was deleted
+        const checks = await Promise.all(all.map(async t => {
+          try {
+            const r = await fetch(`/site-templates/${t.thumbnail}`, { method: 'HEAD' });
+            return r.ok ? t : null;
+          } catch { return null; }
+        }));
+        allTemplates = checks.filter(Boolean);
         renderGallery(allTemplates);
       } catch {
         $('#tpl-gallery').innerHTML = '<div class="empty-state">No templates found. Run: node scripts/generate-thumbnails.cjs</div>';
@@ -1942,9 +1971,10 @@
         <span style="font-size:0.8rem;font-weight:600;">Template: ${selectedTemplate.name}</span>
         <a href="${previewUrl}" target="_blank">Open in New Tab</a>
       `;
-      // Show apply button and clear link, hide generate button and old template picker
+      // Show apply button, colour override, and clear link
       $('#apply-tpl-btn').style.display = 'block';
       $('#clear-tpl-btn').style.display = 'block';
+      $('#tpl-color-override').style.display = 'block';
       $('#submit-btn').style.display = 'none';
       // Hide old template/colour/font pickers
       document.querySelectorAll('#form-generate .field').forEach(function(f) {
@@ -1961,6 +1991,7 @@
       renderGallery(allTemplates);
       $('#apply-tpl-btn').style.display = 'none';
       $('#clear-tpl-btn').style.display = 'none';
+      $('#tpl-color-override').style.display = 'none';
       $('#submit-btn').style.display = 'block';
       document.querySelectorAll('#form-generate .field').forEach(function(f) {
         f.style.display = '';
@@ -2003,6 +2034,11 @@
             address: form.querySelector('[name="address"]')?.value || '',
             logoUrl: uploadedUrls.logoUrl || '',
             faviconUrl: uploadedUrls.faviconUrl || '',
+            colorOverride: $('#tpl-color-enable').checked ? {
+              primary: $('#tpl-color-primary').value,
+              secondary: $('#tpl-color-secondary').value,
+              accent: $('#tpl-color-accent').value,
+            } : null,
           }),
         });
 

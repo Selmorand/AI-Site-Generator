@@ -483,7 +483,7 @@ router.post('/jobs/:id/replace-image', (req: Request, res: Response) => {
  * POST /api/apply-template — copy a template and swap content using LLM
  */
 router.post('/apply-template', async (req: Request, res: Response) => {
-  const { template, file, name, description, industry, phone, email, address, logoUrl, faviconUrl } = req.body
+  const { template, file, name, description, industry, phone, email, address, logoUrl, faviconUrl, colorOverride } = req.body
 
   if (!template || !file || !name || !description) {
     res.status(400).json({ error: 'template, file, name, and description required' })
@@ -559,6 +559,17 @@ router.post('/apply-template', async (req: Request, res: Response) => {
         if (fs.existsSync(mainHtml)) {
           fs.copyFileSync(mainHtml, path.join(outputDir, 'index.html'))
         }
+      }
+    }
+
+    // Step 1b: Replace colours if override provided
+    if (colorOverride) {
+      send('progress', { message: '[Template] Applying colour overrides...' })
+      const templateColors = extractTemplateColors(outputDir)
+      if (templateColors.length > 0) {
+        const newColors = [colorOverride.primary, colorOverride.secondary, colorOverride.accent]
+        replaceColorsInDir(outputDir, templateColors, newColors)
+        send('progress', { message: `  Replaced ${templateColors.length} template colours` })
       }
     }
 
@@ -693,6 +704,99 @@ function adjustHex(hex: string, amount: number): string {
   const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amount))
   const b = Math.min(255, Math.max(0, (num & 0x0000ff) + amount))
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`
+}
+
+/**
+ * Extract the most-used colours from a template's CSS files.
+ * Returns up to 3 dominant colours (primary, secondary, accent).
+ */
+function extractTemplateColors(dir: string): string[] {
+  const colorCounts = new Map<string, number>()
+
+  const scanFile = (filePath: string) => {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    // Match hex colours (6-digit)
+    const hexRegex = /#([0-9a-fA-F]{6})\b/g
+    let match
+    while ((match = hexRegex.exec(content)) !== null) {
+      const hex = '#' + match[1].toLowerCase()
+      // Skip near-black, near-white, and grey colours
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      const isGrey = Math.abs(r - g) < 20 && Math.abs(g - b) < 20
+      const isTooLight = r > 240 && g > 240 && b > 240
+      const isTooDark = r < 15 && g < 15 && b < 15
+      if (!isGrey && !isTooLight && !isTooDark) {
+        colorCounts.set(hex, (colorCounts.get(hex) || 0) + 1)
+      }
+    }
+  }
+
+  // Scan CSS files
+  const walkDir = (d: string) => {
+    const entries = fs.readdirSync(d, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = path.join(d, entry.name)
+      if (entry.isDirectory() && !entry.name.startsWith('.')) {
+        walkDir(full)
+      } else if (entry.name.endsWith('.css')) {
+        scanFile(full)
+      }
+    }
+  }
+  walkDir(dir)
+
+  // Sort by frequency and return top 3
+  return Array.from(colorCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([color]) => color)
+}
+
+/**
+ * Replace colours across all CSS and HTML files in a directory.
+ */
+function replaceColorsInDir(dir: string, oldColors: string[], newColors: string[]) {
+  const walkDir = (d: string) => {
+    const entries = fs.readdirSync(d, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = path.join(d, entry.name)
+      if (entry.isDirectory() && !entry.name.startsWith('.')) {
+        walkDir(full)
+      } else if (entry.name.endsWith('.css') || entry.name.endsWith('.html')) {
+        let content = fs.readFileSync(full, 'utf-8')
+        let changed = false
+        for (let i = 0; i < oldColors.length && i < newColors.length; i++) {
+          const oldHex = oldColors[i]
+          const newHex = newColors[i]
+          if (oldHex === newHex) continue
+
+          // Replace hex (case-insensitive)
+          const regex = new RegExp(oldHex.replace('#', '#?'), 'gi')
+          const before = content
+          content = content.replace(regex, newHex)
+          if (content !== before) changed = true
+
+          // Also replace rgb() equivalent
+          const oldR = parseInt(oldHex.slice(1, 3), 16)
+          const oldG = parseInt(oldHex.slice(3, 5), 16)
+          const oldB = parseInt(oldHex.slice(5, 7), 16)
+          const rgbRegex = new RegExp(`rgb\\(\\s*${oldR}\\s*,\\s*${oldG}\\s*,\\s*${oldB}\\s*\\)`, 'gi')
+          const newR = parseInt(newHex.slice(1, 3), 16)
+          const newG = parseInt(newHex.slice(3, 5), 16)
+          const newB = parseInt(newHex.slice(5, 7), 16)
+          const before2 = content
+          content = content.replace(rgbRegex, `rgb(${newR}, ${newG}, ${newB})`)
+          if (content !== before2) changed = true
+        }
+        if (changed) {
+          fs.writeFileSync(full, content, 'utf-8')
+        }
+      }
+    }
+  }
+  walkDir(dir)
 }
 
 export default router
