@@ -119,7 +119,17 @@ function findHtmlFiles(dir, rootDir, depth = 0) {
     if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'admin-template' && entry.name !== 'documentation') {
       results.push(...findHtmlFiles(full, rootDir, depth + 1));
     } else if (entry.name.match(/^(index|home)[^.]*\.html$/) && depth <= 2) {
-      results.push(full);
+      // Skip template showcase/landing pages (the "pick a demo" pages)
+      const content = fs.readFileSync(full, 'utf-8').slice(0, 2000);
+      const isShowcase = content.match(/launch demo|documentation|support|purchase now|all demos|theme features|pre-built/i);
+      // Skip if it's just "index.html" at root of a multi-template collection
+      const isRootIndex = entry.name === 'index.html' && depth === 0;
+      const hasSubTemplates = fs.readdirSync(path.dirname(full)).filter(f => f.match(/^(index-|home-)/)).length > 3;
+      if (isShowcase || (isRootIndex && hasSubTemplates)) {
+        // Skip — this is a showcase page, not a real homepage
+      } else {
+        results.push(full);
+      }
     }
   }
   return results;
