@@ -8,9 +8,63 @@ import * as path from 'path'
 import OpenAI from 'openai'
 import { runJob, isJobRunning } from './job-runner.js'
 import { tokenTracker } from '../token-tracker.js'
+import { getAllClients, getClient, createClient, updateClient, deleteClient, linkSiteToClient } from './clients.js'
 import type { Request, Response } from 'express'
 
 const router = Router()
+
+// ── Client Management ────────────────────────────────
+
+router.get('/clients', (_req: Request, res: Response) => {
+  res.json(getAllClients())
+})
+
+router.get('/clients/:id', (req: Request, res: Response) => {
+  const client = getClient((req.params as any).id)
+  if (!client) { res.status(404).json({ error: 'Client not found' }); return }
+  res.json(client)
+})
+
+router.post('/clients', (req: Request, res: Response) => {
+  const { businessName, contactName, contactEmail, contactPhone, address, industry, description, domain, notes } = req.body
+  if (!businessName) { res.status(400).json({ error: 'businessName required' }); return }
+
+  const client = createClient({
+    businessName,
+    contactName,
+    contactEmail,
+    contactPhone,
+    address,
+    industry,
+    description,
+    domain,
+    notes,
+    plan: 'single',
+    pageCount: 1,
+    status: 'draft',
+  })
+  res.json(client)
+})
+
+router.patch('/clients/:id', (req: Request, res: Response) => {
+  const updated = updateClient((req.params as any).id, req.body)
+  if (!updated) { res.status(404).json({ error: 'Client not found' }); return }
+  res.json(updated)
+})
+
+router.delete('/clients/:id', (req: Request, res: Response) => {
+  const ok = deleteClient((req.params as any).id)
+  if (!ok) { res.status(404).json({ error: 'Client not found' }); return }
+  res.json({ success: true })
+})
+
+router.post('/clients/:id/link-site', (req: Request, res: Response) => {
+  const { siteId } = req.body
+  if (!siteId) { res.status(400).json({ error: 'siteId required' }); return }
+  const updated = linkSiteToClient((req.params as any).id, siteId)
+  if (!updated) { res.status(404).json({ error: 'Client not found' }); return }
+  res.json(updated)
+})
 
 /**
  * POST /api/generate — start a generation job and stream SSE events.

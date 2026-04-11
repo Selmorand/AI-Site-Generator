@@ -3,5 +3,6 @@ dist/
 output/
 uploads/
 site-templates/
+data/
 .env
 *.tsbuildinfo

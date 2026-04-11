@@ -261,6 +261,45 @@
       font-size: 0.875rem;
     }
 
+    /* Client list */
+    .client-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .client-item:hover { background: var(--surface); }
+    .client-item:last-child { border-bottom: none; }
+    .client-info { flex: 1; min-width: 0; }
+    .client-name { font-weight: 600; }
+    .client-meta { font-size: 0.7rem; color: var(--text-muted); }
+    .client-status {
+      font-size: 0.6rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .client-status.draft { background: #fef3c7; color: #92400e; }
+    .client-status.live { background: #d1fae5; color: #065f46; }
+    .client-status.paused { background: #fee2e2; color: #991b1b; }
+    .client-fee { font-weight: 600; color: var(--primary); font-size: 0.75rem; white-space: nowrap; }
+    .client-actions { display: flex; gap: 0.25rem; }
+    .client-actions button {
+      padding: 0.15rem 0.35rem;
+      font-size: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: white;
+      cursor: pointer;
+    }
+    .client-actions button:hover { border-color: var(--primary); color: var(--primary); }
+    .client-actions .btn-delete:hover { border-color: var(--error); color: var(--error); }
+
     /* Template gallery */
     .tpl-gallery {
       max-height: 300px;
@@ -671,11 +710,41 @@
     <div class="left-col">
       <div class="panel">
         <div class="mode-tabs">
+          <button class="mode-tab" data-mode="clients">Clients</button>
           <button class="mode-tab active" data-mode="generate">Generate</button>
           <button class="mode-tab" data-mode="rebuild">Rebuild</button>
           <button class="mode-tab" data-mode="clone">Clone</button>
         </div>
         <div class="panel-body">
+          <!-- Clients Panel -->
+          <div class="form-section" id="form-clients">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span style="font-weight:600; font-size:0.85rem;">Client List</span>
+              <button class="submit-btn" style="width:auto; padding:0.3rem 0.75rem; font-size:0.75rem; margin:0;" onclick="showClientForm()">+ Add Client</button>
+            </div>
+            <!-- Client form (hidden by default) -->
+            <div id="client-form" style="display:none; border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem; margin-bottom:0.75rem; background:var(--surface);">
+              <input type="hidden" id="cf-id">
+              <div class="field"><label>Business Name <span class="req">*</span></label><input type="text" id="cf-name"></div>
+              <div class="field"><label>Contact Person</label><input type="text" id="cf-contact"></div>
+              <div class="field"><label>Email</label><input type="email" id="cf-email"></div>
+              <div class="field"><label>Phone</label><input type="tel" id="cf-phone"></div>
+              <div class="field"><label>Industry</label><input type="text" id="cf-industry"></div>
+              <div class="field"><label>Description</label><textarea id="cf-description" rows="2"></textarea></div>
+              <div class="field"><label>Address</label><input type="text" id="cf-address"></div>
+              <div class="field"><label>Domain</label><input type="text" id="cf-domain" placeholder="client.interon.co.za"></div>
+              <div class="field"><label>Notes</label><textarea id="cf-notes" rows="2"></textarea></div>
+              <div style="display:flex; gap:0.5rem;">
+                <button class="submit-btn" style="flex:1;" onclick="saveClient()">Save Client</button>
+                <button class="submit-btn" style="flex:0; width:auto; padding:0.3rem 0.75rem; background:var(--text-muted);" onclick="hideClientForm()">Cancel</button>
+              </div>
+            </div>
+            <!-- Client list -->
+            <div id="client-list" style="max-height:400px; overflow-y:auto;">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+
           <!-- Generate Form -->
           <div class="form-section active" id="form-generate">
             <div class="field">
@@ -1261,6 +1330,14 @@
           showPreview(data.jobId);
           buildPageButtons(data.jobId, data.tokens.calls || []);
           showLiveControls();
+          // Auto-link to selected client
+          if (window._selectedClientId && data.jobId) {
+            fetch(`/api/clients/${window._selectedClientId}/link-site`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ siteId: data.jobId }),
+            }).then(() => { loadClients(); addLog('Site linked to client', 'system'); });
+          }
           break;
 
         case 'error':
@@ -1689,7 +1766,142 @@
       } catch { /* ignore */ }
     }
 
-    // Template gallery
+    // ── Client Management ──────────────────────────────
+
+    let allClients = [];
+
+    async function loadClients() {
+      try {
+        const res = await fetch('/api/clients');
+        allClients = await res.json();
+        renderClientList();
+      } catch { }
+    }
+
+    function renderClientList() {
+      const list = $('#client-list');
+      if (allClients.length === 0) {
+        list.innerHTML = '<div class="empty-state">No clients yet. Click "+ Add Client" to start.</div>';
+        return;
+      }
+      list.innerHTML = allClients.map(c => `
+        <div class="client-item" onclick="selectClient('${c.id}')">
+          <div class="client-info">
+            <div class="client-name">${c.businessName}</div>
+            <div class="client-meta">${c.industry || ''} ${c.domain ? '· ' + c.domain : ''} · ${c.pageCount} page${c.pageCount !== 1 ? 's' : ''}</div>
+          </div>
+          <span class="client-status ${c.status}">${c.status}</span>
+          <span class="client-fee">R${c.monthlyFee}/mo</span>
+          <div class="client-actions">
+            <button onclick="event.stopPropagation(); editClient('${c.id}')" title="Edit">✎</button>
+            <button class="btn-delete" onclick="event.stopPropagation(); removeClient('${c.id}')" title="Delete">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showClientForm(client) {
+      $('#client-form').style.display = 'block';
+      if (client) {
+        $('#cf-id').value = client.id;
+        $('#cf-name').value = client.businessName || '';
+        $('#cf-contact').value = client.contactName || '';
+        $('#cf-email').value = client.contactEmail || '';
+        $('#cf-phone').value = client.contactPhone || '';
+        $('#cf-industry').value = client.industry || '';
+        $('#cf-description').value = client.description || '';
+        $('#cf-address').value = client.address || '';
+        $('#cf-domain').value = client.domain || '';
+        $('#cf-notes').value = client.notes || '';
+      } else {
+        $('#cf-id').value = '';
+        $('#client-form').querySelectorAll('input:not([type=hidden]), textarea').forEach(el => el.value = '');
+      }
+    }
+
+    function hideClientForm() {
+      $('#client-form').style.display = 'none';
+    }
+
+    async function saveClient() {
+      const id = $('#cf-id').value;
+      const data = {
+        businessName: $('#cf-name').value,
+        contactName: $('#cf-contact').value,
+        contactEmail: $('#cf-email').value,
+        contactPhone: $('#cf-phone').value,
+        industry: $('#cf-industry').value,
+        description: $('#cf-description').value,
+        address: $('#cf-address').value,
+        domain: $('#cf-domain').value,
+        notes: $('#cf-notes').value,
+      };
+
+      if (!data.businessName) { alert('Business name required'); return; }
+
+      if (id) {
+        await fetch(`/api/clients/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      } else {
+        await fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      }
+
+      hideClientForm();
+      loadClients();
+    }
+
+    function editClient(id) {
+      const client = allClients.find(c => c.id === id);
+      if (client) showClientForm(client);
+    }
+
+    async function removeClient(id) {
+      if (!confirm('Delete this client?')) return;
+      await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      loadClients();
+    }
+
+    function selectClient(id) {
+      const client = allClients.find(c => c.id === id);
+      if (!client) return;
+
+      // Pre-fill the generate form with client details
+      const form = $('#form-generate');
+      form.querySelector('[name="name"]').value = client.businessName || '';
+      form.querySelector('[name="description"]').value = client.description || '';
+      form.querySelector('[name="industry"]').value = client.industry || '';
+      form.querySelector('[name="phone"]').value = client.contactPhone || '';
+      form.querySelector('[name="email"]').value = client.contactEmail || '';
+      form.querySelector('[name="address"]').value = client.address || '';
+
+      // Switch to generate tab
+      currentMode = 'generate';
+      $$('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'generate'));
+      $$('.form-section').forEach(f => f.classList.remove('active'));
+      $('#form-generate').classList.add('active');
+      $('#submit-btn').textContent = 'Generate Site';
+
+      // If client has a site, show it in preview
+      if (client.siteId) {
+        showPreview(client.siteId);
+        showEditChat();
+        showImageManager();
+      }
+
+      // Store selected client for linking after generation
+      window._selectedClientId = client.id;
+      addLog(`Selected client: ${client.businessName}`, 'system');
+    }
+
+    // ── Template gallery ──────────────────────────────
+
     let allTemplates = [];
     let selectedTemplate = null;
 
@@ -1822,6 +2034,14 @@
                   }
                   currentPreviewJobId = data.jobId;
                   showPreview(data.jobId);
+                  // Auto-link to selected client
+                  if (window._selectedClientId && data.jobId) {
+                    fetch(`/api/clients/${window._selectedClientId}/link-site`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ siteId: data.jobId }),
+                    }).then(() => { loadClients(); addLog('Site linked to client', 'system'); });
+                  }
                   showEditChat();
                   showImageManager();
                 }
@@ -1851,6 +2071,7 @@
     });
 
     // Initial load
+    loadClients();
     loadCatalogue();
     loadJobs();
   </script>
